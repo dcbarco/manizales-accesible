@@ -1,0 +1,283 @@
+"use client";
+
+import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { supabase } from "@/lib/supabase";
+import { useAuth } from "./AuthProvider";
+import { useGeolocalizacion } from "@/lib/useGeolocalizacion";
+import { Mapa, type ModoMapa } from "./Mapa";
+import { PantallaCarga } from "./PantallaCarga";
+import { AvisoSeguridad } from "./AvisoSeguridad";
+import { FlujoReporte } from "./FlujoReporte";
+import { DetalleReporte } from "./DetalleReporte";
+import type { Reporte, TipoReporte } from "@/lib/tipos";
+
+type Filtro = "todo" | TipoReporte;
+
+const CLAVE_AVISO = "manizales-accesible-aviso-visto";
+
+// Pantalla principal: mapa inmersivo/general + reportes + navegación
+export function AppPrincipal() {
+  const { sesion, perfil } = useAuth();
+  const router = useRouter();
+  const parametros = useSearchParams();
+  const { posicion, enMovimiento, permiso, reintentar } = useGeolocalizacion();
+
+  const [modo, setModo] = useState<ModoMapa>("inmersiva");
+  const [filtro, setFiltro] = useState<Filtro>("todo");
+  const [reportes, setReportes] = useState<Reporte[]>([]);
+  const [seleccionadoId, setSeleccionadoId] = useState<string | null>(null);
+  const [mostrarFlujo, setMostrarFlujo] = useState(false);
+  const [mostrarAviso, setMostrarAviso] = useState(false);
+  const [sinUbicacion, setSinUbicacion] = useState(false);
+  const [centrarEn, setCentrarEn] = useState<{ lat: number; lng: number } | null>(null);
+
+  // Aviso de seguridad: solo la primera vez (persistido en localStorage)
+  useEffect(() => {
+    if (!localStorage.getItem(CLAVE_AVISO)) setMostrarAviso(true);
+  }, []);
+
+  function cerrarAviso() {
+    localStorage.setItem(CLAVE_AVISO, "1");
+    setMostrarAviso(false);
+  }
+
+  // Carga inicial de reportes con el perfil del autor
+  const cargarReportes = useCallback(async () => {
+    const { data } = await supabase
+      .from("reportes")
+      .select("*, perfil:perfiles(nombre_usuario, nivel)")
+      .order("creado_en", { ascending: false })
+      .limit(500);
+    setReportes((data as Reporte[]) ?? []);
+  }, []);
+
+  useEffect(() => {
+    cargarReportes();
+  }, [cargarReportes]);
+
+  // Realtime: reportes nuevos o actualizados aparecen sin recargar
+  useEffect(() => {
+    const canal = supabase
+      .channel("reportes-vivo")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "reportes" },
+        async (evento) => {
+          const id = (evento.new as Reporte).id;
+          const { data } = await supabase
+            .from("reportes")
+            .select("*, perfil:perfiles(nombre_usuario, nivel)")
+            .eq("id", id)
+            .single();
+          if (data) {
+            setReportes((lista) =>
+              lista.some((r) => r.id === id) ? lista : [data as Reporte, ...lista]
+            );
+          }
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "reportes" },
+        (evento) => {
+          const nuevo = evento.new as Reporte;
+          setReportes((lista) =>
+            lista.map((r) => (r.id === nuevo.id ? { ...r, ...nuevo, perfil: r.perfil } : r))
+          );
+        }
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(canal);
+    };
+  }, []);
+
+  // Llegada desde el historial del perfil: /?r=<id-del-reporte>
+  useEffect(() => {
+    const idReporte = parametros.get("r");
+    if (idReporte && reportes.length > 0) {
+      const r = reportes.find((x) => x.id === idReporte);
+      if (r) {
+        setSeleccionadoId(r.id);
+        setCentrarEn({ lat: r.latitud, lng: r.longitud });
+        router.replace("/", { scroll: false });
+      }
+    }
+  }, [parametros, reportes, router]);
+
+  const actualizarReporte = useCallback((actualizado: Reporte) => {
+    setReportes((lista) =>
+      lista.map((r) => (r.id === actualizado.id ? { ...r, ...actualizado } : r))
+    );
+  }, []);
+
+  const filtrados = useMemo(
+    () => (filtro === "todo" ? reportes : reportes.filter((r) => r.tipo === filtro)),
+    [reportes, filtro]
+  );
+
+  const seleccionado = useMemo(
+    () => reportes.find((r) => r.id === seleccionadoId) ?? null,
+    [reportes, seleccionadoId]
+  );
+
+  function abrirFlujo() {
+    if (!sesion) {
+      router.push("/login");
+      return;
+    }
+    setMostrarFlujo(true);
+  }
+
+  // ---------- Estados de carga / permisos de ubicación ----------
+  if (permiso === "pidiendo" && !posicion) {
+    return <PantallaCarga mensaje="Buscando tu ubicación…" />;
+  }
+
+  if (permiso === "denegado" && !sinUbicacion) {
+    return (
+      <main className="flex min-h-dvh flex-col items-center justify-center gap-5 bg-fondo px-6 text-center">
+        <p className="text-6xl" aria-hidden="true">📍</p>
+        <h1 className="text-2xl font-bold">Necesitamos tu ubicación</h1>
+        <p className="max-w-md text-xl leading-relaxed text-gray-700">
+          La app usa tu ubicación para mostrarte el mapa a tu alrededor y ubicar
+          tus reportes. Activa el permiso de ubicación en tu navegador.
+        </p>
+        <button
+          onClick={reintentar}
+          className="w-full max-w-sm min-h-16 rounded-2xl bg-cta text-2xl font-bold text-white active:scale-95 transition"
+        >
+          Reintentar
+        </button>
+        <button
+          onClick={() => setSinUbicacion(true)}
+          className="min-h-12 text-lg text-gray-600 underline underline-offset-4"
+        >
+          Continuar sin ubicación (mapa de Manizales)
+        </button>
+      </main>
+    );
+  }
+
+  const enGeneral = modo === "general";
+
+  return (
+    <main className="relative h-dvh w-full overflow-hidden">
+      <Mapa
+        modo={modo}
+        posicion={posicion}
+        enMovimiento={enMovimiento}
+        reportes={filtrados}
+        onSeleccionar={(r) => setSeleccionadoId(r.id)}
+        centrarEn={centrarEn}
+      />
+
+      {/* ---------- Barra superior ---------- */}
+      <div className="absolute inset-x-0 top-0 flex flex-col gap-2 p-3">
+        <div className="flex items-center justify-between gap-2">
+          <span className="rounded-full bg-white/95 px-4 py-2 text-lg font-extrabold shadow">
+            Manizales Accesible
+          </span>
+          <button
+            onClick={() => setMostrarAviso(true)}
+            aria-label="Ver el aviso de seguridad"
+            className="flex h-14 w-14 items-center justify-center rounded-full bg-white/95 text-2xl shadow"
+          >
+            🛡️
+          </button>
+        </div>
+
+        {/* Filtros grandes (vista general) */}
+        {enGeneral && (
+          <div
+            className="flex gap-2"
+            role="group"
+            aria-label="Filtrar reportes por tipo"
+          >
+            {(
+              [
+                { valor: "todo", texto: "Ver todo" },
+                { valor: "barrera", texto: "Solo barreras" },
+                { valor: "bienestar", texto: "Solo bienestar" },
+              ] as const
+            ).map((f) => (
+              <button
+                key={f.valor}
+                onClick={() => setFiltro(f.valor)}
+                aria-pressed={filtro === f.valor}
+                className={`min-h-14 flex-1 rounded-2xl px-2 text-lg font-bold shadow transition ${
+                  filtro === f.valor
+                    ? f.valor === "barrera"
+                      ? "bg-barrera text-white"
+                      : f.valor === "bienestar"
+                        ? "bg-bienestar text-white"
+                        : "bg-tinta text-white"
+                    : "bg-white/95 text-tinta"
+                }`}
+              >
+                {f.texto}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ---------- Barra inferior: Perfil | Reportar | Mapa ---------- */}
+      <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 p-4 pb-6">
+        <Link
+          href={sesion ? "/perfil" : "/login"}
+          className="flex h-16 w-20 flex-col items-center justify-center rounded-2xl bg-white/95 shadow text-base font-bold"
+        >
+          <span className="text-2xl" aria-hidden="true">👤</span>
+          Perfil
+          {perfil && (
+            <span className="sr-only">, nivel {perfil.nivel}</span>
+          )}
+        </Link>
+
+        <button
+          onClick={abrirFlujo}
+          className="flex min-h-20 flex-1 max-w-xs flex-col items-center justify-center rounded-3xl bg-cta text-white shadow-2xl active:scale-95 transition"
+        >
+          <span className="text-3xl" aria-hidden="true">📷</span>
+          <span className="text-xl font-extrabold">Reportar</span>
+        </button>
+
+        <button
+          onClick={() => setModo(enGeneral ? "inmersiva" : "general")}
+          className="flex h-16 w-20 flex-col items-center justify-center rounded-2xl bg-white/95 shadow text-base font-bold"
+        >
+          <span className="text-2xl" aria-hidden="true">
+            {enGeneral ? "🚶" : "🗺️"}
+          </span>
+          {enGeneral ? "Volver" : "Mapa"}
+        </button>
+      </div>
+
+      {/* ---------- Capas modales ---------- */}
+      {mostrarAviso && <AvisoSeguridad onCerrar={cerrarAviso} />}
+
+      {mostrarFlujo && (
+        <FlujoReporte
+          posicion={posicion}
+          onCerrar={() => setMostrarFlujo(false)}
+          onCreado={(r) => {
+            setReportes((lista) =>
+              lista.some((x) => x.id === r.id) ? lista : [r, ...lista]
+            );
+          }}
+        />
+      )}
+
+      {seleccionado && (
+        <DetalleReporte
+          reporte={seleccionado}
+          onCerrar={() => setSeleccionadoId(null)}
+          onActualizar={actualizarReporte}
+        />
+      )}
+    </main>
+  );
+}

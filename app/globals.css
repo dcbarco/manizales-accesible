@@ -1,0 +1,145 @@
+@import "tailwindcss";
+
+@theme {
+  /* Paleta sobria con dos acentos: cálido (barreras) y frío (bienestar) */
+  --color-barrera: #e8590c;
+  --color-barrera-oscuro: #d9480f;
+  --color-barrera-suave: #fff0e6;
+  --color-bienestar: #099268;
+  --color-bienestar-oscuro: #087f5b;
+  --color-bienestar-suave: #e6fcf5;
+  --color-cta: #f76707; /* botón principal de reporte, vibrante */
+  --color-fondo: #f6f5f2;
+  --color-tinta: #1f2428;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  /* Tipografía grande y legible para público 40+ (mínimo 18px) */
+  font-size: 18px;
+  background: var(--color-fondo);
+  color: var(--color-tinta);
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior: none;
+}
+
+/* Foco visible para navegación con teclado / lectores de pantalla */
+:focus-visible {
+  outline: 3px solid #1971c2;
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* ============ Avatar del usuario en el mapa ============ */
+.avatar-usuario {
+  width: 56px;
+  height: 56px;
+  display: block;
+  filter: drop-shadow(0 3px 4px rgb(0 0 0 / 0.35));
+}
+
+/* Estado quieto: respiración suave */
+.avatar-usuario.quieto .avatar-cuerpo {
+  animation: respirar 2.6s ease-in-out infinite;
+  transform-origin: 50% 100%;
+}
+
+/* Estado caminando: rebote + balanceo de piernas */
+.avatar-usuario.caminando .avatar-cuerpo {
+  animation: caminar-rebote 0.55s ease-in-out infinite;
+  transform-origin: 50% 100%;
+}
+.avatar-usuario.caminando .pierna-izq {
+  animation: paso-izq 0.55s ease-in-out infinite;
+  transform-origin: 50% 0%;
+  transform-box: fill-box;
+}
+.avatar-usuario.caminando .pierna-der {
+  animation: paso-der 0.55s ease-in-out infinite;
+  transform-origin: 50% 0%;
+  transform-box: fill-box;
+}
+
+@keyframes respirar {
+  0%, 100% { transform: scaleY(1); }
+  50% { transform: scaleY(1.03); }
+}
+@keyframes caminar-rebote {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+@keyframes paso-izq {
+  0%, 100% { transform: rotate(18deg); }
+  50% { transform: rotate(-18deg); }
+}
+@keyframes paso-der {
+  0%, 100% { transform: rotate(-18deg); }
+  50% { transform: rotate(18deg); }
+}
+
+/* ============ Globos de reporte en el mapa ============ */
+.globo-reporte {
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+.globo-reporte:hover,
+.globo-reporte:focus-visible {
+  transform: scale(1.08);
+}
+
+/* ============ Logo animado (spinner de carga) ============ */
+.logo-latido {
+  animation: latido 1.4s ease-in-out infinite;
+}
+@keyframes latido {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.12); }
+}
+.anillo-girando {
+  animation: girar 1.1s linear infinite;
+}
+@keyframes girar {
+  to { transform: rotate(360deg); }
+}
+
+/* ============ Animaciones de entrada ============ */
+.aparece-abajo {
+  animation: subir 0.25s ease-out;
+}
+@keyframes subir {
+  from { transform: translateY(24px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.aparece-zoom {
+  animation: acercar 0.3s ease-out;
+}
+@keyframes acercar {
+  from { transform: scale(0.85); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+/* Botón de envío animado */
+.boton-enviar-vivo {
+  animation: pulso-envio 1.8s ease-in-out infinite;
+}
+@keyframes pulso-envio {
+  0%, 100% { box-shadow: 0 0 0 0 rgb(247 103 7 / 0.45); }
+  50% { box-shadow: 0 0 0 12px rgb(247 103 7 / 0); }
+}
+
+/* Respeto a usuarios que prefieren menos movimiento */
+@media (prefers-reduced-motion: reduce) {
+  .avatar-usuario .avatar-cuerpo,
+  .avatar-usuario .pierna-izq,
+  .avatar-usuario .pierna-der,
+  .logo-latido,
+  .boton-enviar-vivo,
+  .aparece-abajo,
+  .aparece-zoom {
+    animation: none !important;
+  }
+}
