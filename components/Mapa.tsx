@@ -17,6 +17,23 @@ interface Props {
   onSeleccionar: (reporte: Reporte) => void;
   /** Reporte al que centrar el mapa (ej. viniendo del historial del perfil) */
   centrarEn?: { lat: number; lng: number } | null;
+  /**
+   * Nivel de acercamiento de la cámara en vista inmersiva, de 0 a 1.
+   * 0 = lejos, vista casi cenital (aérea); 1 = cerca, a nivel del avatar.
+   */
+  acercamiento?: number;
+}
+
+// Traduce el acercamiento (0..1) a los parámetros de cámara. Al alejarse
+// (t→0) la cámara sube y se endereza hacia una vista cenital; al acercarse
+// (t→1) baja el zoom de altura y aumenta el pitch para mirar a nivel de los
+// ojos del avatar. La curva es lineal para que el slider se sienta parejo.
+function camaraDesdeAcercamiento(t: number) {
+  const c = Math.max(0, Math.min(1, t));
+  return {
+    pitch: 12 + c * (72 - 12), // 12° (casi cenital) → 72° (nivel del avatar)
+    zoom: 16.6 + c * (19.2 - 16.6), // cenital sin alejarse tanto ⇄ mucho más cerca
+  };
 }
 
 // Avatar minimalista y unisex (SVG original, dos estados por CSS)
@@ -39,6 +56,7 @@ export function Mapa({
   reportes,
   onSeleccionar,
   centrarEn,
+  acercamiento = 0.7,
 }: Props) {
   const contenedorRef = useRef<HTMLDivElement>(null);
   const mapaRef = useRef<maplibregl.Map | null>(null);
@@ -284,10 +302,12 @@ export function Mapa({
       });
     } else {
       const pos = posicionRef.current;
+      // Al volver a la vista inmersiva respetamos el nivel elegido en el slider
+      const { pitch, zoom } = camaraDesdeAcercamiento(acercamientoRef.current);
       mapa.flyTo({
         center: pos ? [pos.lng, pos.lat] : [CENTRO_MANIZALES.lng, CENTRO_MANIZALES.lat],
-        zoom: 17.5,
-        pitch: 60,
+        zoom,
+        pitch,
         duration: 1200,
       });
     }
@@ -296,6 +316,24 @@ export function Mapa({
   useEffect(() => {
     sincronizarModo();
   }, [modo]);
+
+  // ---------- Slider de cámara: rotación suave según acercamiento ----------
+  const acercamientoRef = useRef(acercamiento);
+  acercamientoRef.current = acercamiento;
+
+  useEffect(() => {
+    const mapa = mapaRef.current;
+    if (!mapa || modoRef.current !== "inmersiva") return;
+    const pos = posicionRef.current;
+    const { pitch, zoom } = camaraDesdeAcercamiento(acercamiento);
+    // Duración corta: la cámara sigue el arrastre del slider de forma fluida
+    mapa.easeTo({
+      ...(pos ? { center: [pos.lng, pos.lat] } : {}),
+      pitch,
+      zoom,
+      duration: 260,
+    });
+  }, [acercamiento]);
 
   // ---------- Seguimiento de la posición del usuario ----------
   const posicionRef = useRef(posicion);

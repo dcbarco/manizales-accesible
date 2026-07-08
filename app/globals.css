@@ -91,6 +91,61 @@ body {
   transform: scale(1.08);
 }
 
+/* ============ Slider lateral de cámara ============ */
+/* Se rota un input horizontal para lograr un slider vertical con orientación
+   predecible: el mínimo (0) queda arriba (vista aérea) y el máximo (100)
+   abajo (a nivel del avatar). */
+.slider-camara {
+  position: relative;
+  width: 44px;
+  height: 200px;
+}
+.slider-camara input[type="range"] {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 200px;
+  height: 44px;
+  margin: 0;
+  transform: translate(-50%, -50%) rotate(90deg);
+  transform-origin: center;
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+/* Riel */
+.slider-camara input[type="range"]::-webkit-slider-runnable-track {
+  height: 8px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #adb5bd 0%, var(--color-cta) 100%);
+}
+.slider-camara input[type="range"]::-moz-range-track {
+  height: 8px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #adb5bd 0%, var(--color-cta) 100%);
+}
+/* Perilla grande y de alto contraste (área táctil cómoda para público 40+) */
+.slider-camara input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 34px;
+  height: 34px;
+  margin-top: -13px;
+  border-radius: 50%;
+  background: var(--color-cta);
+  border: 4px solid #ffffff;
+  box-shadow: 0 2px 6px rgb(0 0 0 / 0.35);
+}
+.slider-camara input[type="range"]::-moz-range-thumb {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--color-cta);
+  border: 4px solid #ffffff;
+  box-shadow: 0 2px 6px rgb(0 0 0 / 0.35);
+}
+
 /* ============ Logo animado (spinner de carga) ============ */
 .logo-latido {
   animation: latido 1.4s ease-in-out infinite;

@@ -25,6 +25,8 @@ export function AppPrincipal() {
   const { posicion, enMovimiento, permiso, reintentar } = useGeolocalizacion();
 
   const [modo, setModo] = useState<ModoMapa>("inmersiva");
+  // Acercamiento de la cámara (0 = vista aérea/cenital, 1 = a nivel del avatar)
+  const [acercamiento, setAcercamiento] = useState(0.7);
   const [filtro, setFiltro] = useState<Filtro>("todo");
   const [reportes, setReportes] = useState<Reporte[]>([]);
   const [seleccionadoId, setSeleccionadoId] = useState<string | null>(null);
@@ -172,7 +174,31 @@ export function AppPrincipal() {
         reportes={filtrados}
         onSeleccionar={(r) => setSeleccionadoId(r.id)}
         centrarEn={centrarEn}
+        acercamiento={acercamiento}
       />
+
+      {/* ---------- Slider lateral de cámara (solo vista inmersiva) ----------
+          Controla la altura y la inclinación de la cámara: arriba = vista
+          aérea (cenital); abajo = a nivel del avatar. */}
+      {!enGeneral && (
+        <div className="absolute right-3 top-1/2 z-10 -translate-y-1/2">
+          <div className="flex flex-col items-center gap-2 rounded-full bg-white/95 px-2 py-3 shadow-lg">
+            <span className="text-xl" aria-hidden="true">🛰️</span>
+            <div className="slider-camara">
+              <input
+                type="range"
+                min={0}
+                max={100}
+                step={1}
+                value={Math.round(acercamiento * 100)}
+                onChange={(e) => setAcercamiento(Number(e.target.value) / 100)}
+                aria-label="Acercamiento de la cámara: arriba vista aérea, abajo a nivel del avatar"
+              />
+            </div>
+            <span className="text-xl" aria-hidden="true">🚶</span>
+          </div>
+        </div>
+      )}
 
       {/* ---------- Barra superior ---------- */}
       <div className="absolute inset-x-0 top-0 flex flex-col gap-2 p-3">

@@ -37,7 +37,7 @@ export function nombreNivel(nivel: number): string {
 // Etiquetas visibles de cada estado según tipo de reporte
 export function etiquetaEstado(estado: EstadoReporte, tipo: TipoReporte): string {
   const mapa: Record<string, string> = {
-    pendiente: "Pendiente",
+    pendiente: "Sin corroborar",
     confirmado: "Confirmado",
     persiste: tipo === "barrera" ? "Sigue ahí" : "Recomendado",
     recomendado: "Recomendado",

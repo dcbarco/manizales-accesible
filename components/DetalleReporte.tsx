@@ -262,12 +262,28 @@ export function DetalleReporte({ reporte, onCerrar, onActualizar }: Props) {
                   placeholder="Escribe un comentario…"
                   className="min-h-14 flex-1 rounded-xl border-2 border-gray-300 px-3 text-lg"
                 />
+                {/* Botón cuadrado con ícono (avión de papel): ocupa un ancho
+                    fijo para no ensanchar la fila ni provocar scroll horizontal.
+                    Mantiene área táctil ≥56px y etiqueta accesible. */}
                 <button
                   onClick={comentar}
                   disabled={ocupado || !texto.trim()}
-                  className="min-h-14 rounded-xl bg-tinta px-5 text-lg font-bold text-white active:scale-95 transition disabled:opacity-50"
+                  aria-label="Enviar comentario"
+                  className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-tinta text-white active:scale-95 transition disabled:opacity-50"
                 >
-                  Enviar
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="h-7 w-7"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path d="M22 2 11 13" />
+                    <path d="M22 2 15 22l-4-9-9-4 20-7z" />
+                  </svg>
                 </button>
               </div>
             ) : (
