@@ -67,34 +67,50 @@ export function Mapa({
     });
     mapaRef.current = mapa;
 
+    // Evita que un error de MapLibre (p. ej. una capa opcional) rompa el mapa
+    mapa.on("error", (e) => {
+      console.warn("MapLibre:", e.error?.message ?? e);
+    });
+
     mapa.on("load", () => {
       estiloListoRef.current = true;
 
-      // Extrusión 3D de edificios (capa "building" de OpenMapTiles)
+      // Extrusión 3D de edificios. El nombre de la fuente varía según el
+      // proveedor de tiles (MapTiler usa "maptiler_planet", OpenFreeMap
+      // usa "openmaptiles"), así que lo detectamos desde el estilo cargado
+      // buscando la capa de edificios existente y reutilizando su fuente.
       try {
-        mapa.addLayer({
-          id: "edificios-3d",
-          type: "fill-extrusion",
-          source: "openmaptiles",
-          "source-layer": "building",
-          minzoom: 14,
-          paint: {
-            "fill-extrusion-color": "#d8d4cc",
-            "fill-extrusion-height": [
-              "coalesce",
-              ["get", "render_height"],
-              ["get", "height"],
-              8,
-            ],
-            "fill-extrusion-base": [
-              "coalesce",
-              ["get", "render_min_height"],
-              ["get", "min_height"],
-              0,
-            ],
-            "fill-extrusion-opacity": 0.75,
-          },
-        });
+        const estilo = mapa.getStyle();
+        const capaEdificio = estilo.layers?.find(
+          (c) => "source-layer" in c && c["source-layer"] === "building"
+        ) as (maplibregl.LayerSpecification & { source?: string }) | undefined;
+        const fuenteEdificios = capaEdificio?.source;
+
+        if (fuenteEdificios) {
+          mapa.addLayer({
+            id: "edificios-3d",
+            type: "fill-extrusion",
+            source: fuenteEdificios,
+            "source-layer": "building",
+            minzoom: 14,
+            paint: {
+              "fill-extrusion-color": "#d8d4cc",
+              "fill-extrusion-height": [
+                "coalesce",
+                ["get", "render_height"],
+                ["get", "height"],
+                8,
+              ],
+              "fill-extrusion-base": [
+                "coalesce",
+                ["get", "render_min_height"],
+                ["get", "min_height"],
+                0,
+              ],
+              "fill-extrusion-opacity": 0.75,
+            },
+          });
+        }
       } catch {
         // Si el estilo no trae capa de edificios, el mapa sigue funcionando
       }
