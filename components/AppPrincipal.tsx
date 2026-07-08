@@ -152,13 +152,13 @@ export function AppPrincipal() {
   // ---------- Proximidad: radar + notificación de puntos cercanos ----------
   const { enZona, entrada } = useProximidad(posicion, filtrados);
   const idsEnZona = useMemo(() => new Set(enZona.map((r) => r.id)), [enZona]);
-  const [avisoCerrado, setAvisoCerrado] = useState(false);
+  // La lista de puntos cercanos se abre/cierra con la campana de notificaciones
+  const [mostrarCercania, setMostrarCercania] = useState(false);
 
-  // Al entrar a la zona de un punto nuevo: reabrir la tarjeta y, si el usuario
-  // dio permiso, mandar una notificación del navegador.
+  // Al entrar a la zona de un punto nuevo: notificación del navegador (si hay
+  // permiso). El indicador visible es la campana con el globo rojo de conteo.
   useEffect(() => {
     if (entrada === 0 || !sesion || enZona.length === 0) return;
-    setAvisoCerrado(false);
     notificarNavegador(enZona);
   }, [entrada]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -170,11 +170,15 @@ export function AppPrincipal() {
     }
   }, [sesion]);
 
+  // Si ya no hay puntos cerca, cierra el listado automáticamente
+  useEffect(() => {
+    if (enZona.length === 0) setMostrarCercania(false);
+  }, [enZona.length]);
+
   const mostrarAvisoCercania =
     !!sesion &&
-    modo === "inmersiva" &&
+    mostrarCercania &&
     enZona.length > 0 &&
-    !avisoCerrado &&
     !seleccionado &&
     !mostrarFlujo &&
     !mostrarAviso;
@@ -261,13 +265,37 @@ export function AppPrincipal() {
           <span className="rounded-full bg-white/95 px-4 py-2 text-lg font-extrabold shadow">
             Manizales Accesible
           </span>
-          <button
-            onClick={() => setMostrarAviso(true)}
-            aria-label="Ver el aviso de seguridad"
-            className="flex h-14 w-14 items-center justify-center rounded-full bg-white/95 text-2xl shadow"
-          >
-            🛡️
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Campana de notificaciones con globo rojo de conteo */}
+            {sesion && (
+              <button
+                onClick={() => setMostrarCercania((v) => !v)}
+                aria-label={
+                  enZona.length > 0
+                    ? `Ver ${enZona.length} punto(s) cerca de ti`
+                    : "No tienes puntos cerca"
+                }
+                className="relative flex h-14 w-14 items-center justify-center rounded-full bg-white/95 text-2xl shadow"
+              >
+                🔔
+                {enZona.length > 0 && (
+                  <span
+                    className="absolute -right-0.5 -top-0.5 flex h-6 min-w-6 items-center justify-center rounded-full border-2 border-white bg-red-600 px-1 text-sm font-extrabold text-white"
+                    aria-hidden="true"
+                  >
+                    {enZona.length}
+                  </span>
+                )}
+              </button>
+            )}
+            <button
+              onClick={() => setMostrarAviso(true)}
+              aria-label="Ver el aviso de seguridad"
+              className="flex h-14 w-14 items-center justify-center rounded-full bg-white/95 text-2xl shadow"
+            >
+              🛡️
+            </button>
+          </div>
         </div>
 
         {/* Filtros grandes (vista general) */}
@@ -342,7 +370,7 @@ export function AppPrincipal() {
         <TarjetaCercania
           puntos={enZona}
           onSeleccionar={(r) => setSeleccionadoId(r.id)}
-          onCerrar={() => setAvisoCerrado(true)}
+          onCerrar={() => setMostrarCercania(false)}
         />
       )}
 

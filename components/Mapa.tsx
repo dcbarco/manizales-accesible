@@ -404,10 +404,12 @@ export function Mapa({
     );
 
     if (enGeneral) {
-      // Panorama de la ciudad, ligeramente inclinado y sin desplazamiento
+      // Panorama de la ciudad elevado, pero centrado en el punto del avatar
+      // para no perder de vista la zona en la que estamos.
+      const pos = posicionRef.current;
       mapa.flyTo({
-        center: [CENTRO_MANIZALES.lng, CENTRO_MANIZALES.lat],
-        zoom: 13.2,
+        center: pos ? [pos.lng, pos.lat] : [CENTRO_MANIZALES.lng, CENTRO_MANIZALES.lat],
+        zoom: 13.6,
         pitch: 30,
         bearing: 0,
         padding: { top: 0, bottom: 0, left: 0, right: 0 },
@@ -505,8 +507,11 @@ export function Mapa({
   // es el que recibe MapLibre: NO usamos inset-0 ahí porque MapLibre le aplica
   // .maplibregl-map { position: relative }, lo que anularía el inset y colapsaría
   // su altura a 0. Con h-full/w-full llena el contenedor sin depender del inset.
+  // `isolate` crea un contexto de apilamiento propio: así el z-index alto del
+  // avatar solo compite DENTRO del mapa y nunca se dibuja encima de las
+  // tarjetas/modales que van por fuera del mapa.
   return (
-    <div className="absolute inset-0">
+    <div className="absolute inset-0 isolate">
       <div ref={contenedorRef} className="h-full w-full" aria-label="Mapa de reportes" />
     </div>
   );

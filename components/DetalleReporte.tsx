@@ -133,9 +133,18 @@ export function DetalleReporte({ reporte, onCerrar, onActualizar }: Props) {
       onClick={onCerrar}
     >
       <div
-        className="aparece-abajo w-full max-w-md max-h-[88dvh] overflow-y-auto rounded-t-3xl bg-white"
+        className="aparece-abajo relative w-full max-w-md max-h-[88dvh] overflow-y-auto rounded-t-3xl bg-white"
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Cierre rápido con "X" (segundo método, junto al botón "Cerrar") */}
+        <button
+          onClick={onCerrar}
+          aria-label="Cerrar"
+          className="absolute right-3 top-3 z-20 flex h-11 w-11 items-center justify-center rounded-full bg-black/55 text-2xl font-bold text-white active:scale-95"
+        >
+          ✕
+        </button>
+
         {/* Foto (ampliable) */}
         <button
           onClick={() => setFotoAmpliada(true)}
@@ -269,11 +278,11 @@ export function DetalleReporte({ reporte, onCerrar, onActualizar }: Props) {
                   onClick={comentar}
                   disabled={ocupado || !texto.trim()}
                   aria-label="Enviar comentario"
-                  className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-tinta text-white active:scale-95 transition disabled:opacity-50"
+                  className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-tinta text-white active:scale-95 transition disabled:opacity-50"
                 >
                   <svg
                     viewBox="0 0 24 24"
-                    className="h-7 w-7"
+                    className="h-6 w-6"
                     fill="none"
                     stroke="currentColor"
                     strokeWidth="2.2"
@@ -298,7 +307,7 @@ export function DetalleReporte({ reporte, onCerrar, onActualizar }: Props) {
 
           <button
             onClick={onCerrar}
-            className="min-h-14 rounded-2xl border-4 border-gray-400 text-xl font-bold active:scale-95 transition"
+            className="min-h-14 rounded-2xl bg-cta text-xl font-bold text-white active:scale-95 transition"
           >
             Cerrar
           </button>
@@ -307,21 +316,32 @@ export function DetalleReporte({ reporte, onCerrar, onActualizar }: Props) {
 
       {/* Foto en pantalla completa */}
       {fotoAmpliada && (
-        <button
+        <div
           className="fixed inset-0 z-[75] flex items-center justify-center bg-black/90 p-2"
           onClick={(e) => {
             e.stopPropagation();
             setFotoAmpliada(false);
           }}
-          aria-label="Cerrar la foto ampliada"
         >
+          {/* Botón de cerrar visible: evita que el usuario recurra al "Atrás"
+              del celular (que recargaría la app y arruinaría la experiencia). */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setFotoAmpliada(false);
+            }}
+            aria-label="Cerrar la foto ampliada"
+            className="absolute right-4 top-4 z-10 flex h-12 w-12 items-center justify-center rounded-full bg-white/90 text-2xl font-bold text-tinta active:scale-95"
+          >
+            ✕
+          </button>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={reporte.foto_url}
-            alt={`Foto ampliada del reporte`}
+            alt="Foto ampliada del reporte"
             className="max-h-full max-w-full rounded-xl object-contain"
           />
-        </button>
+        </div>
       )}
     </div>
   );

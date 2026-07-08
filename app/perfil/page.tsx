@@ -116,20 +116,32 @@ export default function PaginaPerfil() {
             : "¡Alcanzaste el nivel máximo: Héroe Ciudadano!"}
         </p>
 
-        {/* Contadores */}
+        {/* Contadores: ahora son botones (con gradiente) que llevan al mapa */}
         <div className="mt-4 grid grid-cols-3 gap-2 text-center">
-          <div className="rounded-2xl bg-gray-100 p-3">
-            <p className="text-2xl font-extrabold">{perfil.reportes_total}</p>
-            <p className="text-base text-gray-700">Reportes</p>
-          </div>
-          <div className="rounded-2xl bg-gray-100 p-3">
-            <p className="text-2xl font-extrabold">{perfil.votos_total}</p>
-            <p className="text-base text-gray-700">Votos</p>
-          </div>
-          <div className="rounded-2xl bg-gray-100 p-3">
-            <p className="text-2xl font-extrabold">{perfil.comentarios_total}</p>
-            <p className="text-base text-gray-700">Comentarios</p>
-          </div>
+          <Link
+            href="/"
+            aria-label={`${perfil.reportes_total} reportes. Ir al mapa`}
+            className="rounded-2xl bg-gradient-to-b from-orange-400 to-orange-600 p-3 text-white shadow active:scale-95 transition"
+          >
+            <p className="text-2xl font-extrabold leading-none">{perfil.reportes_total}</p>
+            <p className="mt-1 text-xs font-semibold">Reportes</p>
+          </Link>
+          <Link
+            href="/"
+            aria-label={`${perfil.votos_total} votos. Ir al mapa`}
+            className="rounded-2xl bg-gradient-to-b from-slate-500 to-slate-700 p-3 text-white shadow active:scale-95 transition"
+          >
+            <p className="text-2xl font-extrabold leading-none">{perfil.votos_total}</p>
+            <p className="mt-1 text-xs font-semibold">Votos</p>
+          </Link>
+          <Link
+            href="/"
+            aria-label={`${perfil.comentarios_total} comentarios. Ir al mapa`}
+            className="rounded-2xl bg-gradient-to-b from-emerald-500 to-emerald-700 p-3 text-white shadow active:scale-95 transition"
+          >
+            <p className="text-2xl font-extrabold leading-none">{perfil.comentarios_total}</p>
+            <p className="mt-1 text-xs font-semibold">Comentarios</p>
+          </Link>
         </div>
       </section>
 
@@ -207,7 +219,7 @@ export default function PaginaPerfil() {
           await cerrarSesion();
           router.push("/");
         }}
-        className="min-h-14 rounded-2xl border-4 border-gray-400 bg-white text-xl font-bold text-gray-700 active:scale-95 transition"
+        className="min-h-14 rounded-2xl bg-cta text-xl font-bold text-white shadow active:scale-95 transition"
       >
         Cerrar sesión
       </button>
