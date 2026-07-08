@@ -107,8 +107,8 @@ export function Mapa({
       zoom: 18.4,
       pitch: 61, // arranca con mayor incidencia de la perspectiva del avatar
       bearing: 0,
-      // Atribución compacta: solo el ícono "ⓘ" que se expande al tocarlo
-      attributionControl: { compact: true },
+      // Sin control de atribución: se retira el elemento de MapTiler/OSM de la UI
+      attributionControl: false,
     });
     mapaRef.current = mapa;
 

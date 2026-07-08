@@ -102,17 +102,18 @@ body {
   height: 90px;
   border-radius: 50%;
   box-sizing: border-box;
-  border: 3px solid var(--color-radar, #f76707);
-  background: color-mix(in srgb, var(--color-radar, #f76707) 14%, transparent);
+  /* Discreto: borde y relleno de baja opacidad para no saturar la vista */
+  border: 2px solid color-mix(in srgb, var(--color-radar, #f76707) 40%, transparent);
+  background: color-mix(in srgb, var(--color-radar, #f76707) 6%, transparent);
   pointer-events: none; /* no debe interceptar toques sobre el mapa/globos */
 }
-/* Dentro de la zona de influencia: pulso tipo radar */
+/* Dentro de la zona de influencia: pulso tipo radar (se conserva) */
 .radar-anillo.activo {
   animation: radar-pulso 1.7s ease-out infinite;
 }
 @keyframes radar-pulso {
   0% {
-    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-radar, #f76707) 55%, transparent);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-radar, #f76707) 35%, transparent);
   }
   70% {
     box-shadow: 0 0 0 24px color-mix(in srgb, var(--color-radar, #f76707) 0%, transparent);
@@ -130,24 +131,6 @@ body {
 .globo-reporte:hover,
 .globo-reporte:focus-visible {
   transform: scale(1.08);
-}
-
-/* ============ Atribución del mapa: solo el ícono "i" ============ */
-/* MapLibre a veces no aplica su clase compacta en la carga inicial y muestra
-   el crédito como barra de texto. Forzamos la apariencia compacta: solo la
-   "ⓘ"; el crédito completo (MapTiler/OSM) se despliega al tocarla, cumpliendo
-   la atribución exigida por sus términos. */
-.maplibregl-ctrl-attrib .maplibregl-ctrl-attrib-button {
-  display: block !important;
-}
-.maplibregl-ctrl-attrib:not(.maplibregl-compact-show) .maplibregl-ctrl-attrib-inner {
-  display: none !important;
-}
-.maplibregl-ctrl-attrib:not(.maplibregl-compact-show) {
-  min-height: 24px !important;
-  padding: 2px 24px 2px 0 !important;
-  background-color: #fff !important;
-  border-radius: 12px !important;
 }
 
 /* ============ Slider lateral de cámara ============ */

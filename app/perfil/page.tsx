@@ -49,6 +49,13 @@ export default function PaginaPerfil() {
 
   const { actual, siguiente, progreso } = infoNivel(perfil.puntos);
 
+  // Baja suavemente hasta la sección "Mis reportes" dentro de la misma tarjeta
+  function irAMisReportes() {
+    document
+      .getElementById("mis-reportes")
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col gap-5 bg-fondo px-5 py-6">
       <div className="flex items-center justify-between">
@@ -116,32 +123,32 @@ export default function PaginaPerfil() {
             : "¡Alcanzaste el nivel máximo: Héroe Ciudadano!"}
         </p>
 
-        {/* Contadores: ahora son botones (con gradiente) que llevan al mapa */}
+        {/* Contadores: botones (con gradiente) que bajan a "Mis reportes" */}
         <div className="mt-4 grid grid-cols-3 gap-2 text-center">
-          <Link
-            href="/"
-            aria-label={`${perfil.reportes_total} reportes. Ir al mapa`}
+          <button
+            onClick={irAMisReportes}
+            aria-label={`${perfil.reportes_total} reportes. Ver mis reportes`}
             className="rounded-2xl bg-gradient-to-b from-orange-400 to-orange-600 p-3 text-white shadow active:scale-95 transition"
           >
             <p className="text-2xl font-extrabold leading-none">{perfil.reportes_total}</p>
             <p className="mt-1 text-xs font-semibold">Reportes</p>
-          </Link>
-          <Link
-            href="/"
-            aria-label={`${perfil.votos_total} votos. Ir al mapa`}
+          </button>
+          <button
+            onClick={irAMisReportes}
+            aria-label={`${perfil.votos_total} votos. Ver mis reportes`}
             className="rounded-2xl bg-gradient-to-b from-slate-500 to-slate-700 p-3 text-white shadow active:scale-95 transition"
           >
             <p className="text-2xl font-extrabold leading-none">{perfil.votos_total}</p>
             <p className="mt-1 text-xs font-semibold">Votos</p>
-          </Link>
-          <Link
-            href="/"
-            aria-label={`${perfil.comentarios_total} comentarios. Ir al mapa`}
+          </button>
+          <button
+            onClick={irAMisReportes}
+            aria-label={`${perfil.comentarios_total} comentarios. Ver mis reportes`}
             className="rounded-2xl bg-gradient-to-b from-emerald-500 to-emerald-700 p-3 text-white shadow active:scale-95 transition"
           >
             <p className="text-2xl font-extrabold leading-none">{perfil.comentarios_total}</p>
             <p className="mt-1 text-xs font-semibold">Comentarios</p>
-          </Link>
+          </button>
         </div>
       </section>
 
@@ -173,7 +180,11 @@ export default function PaginaPerfil() {
       </section>
 
       {/* Historial de reportes propios */}
-      <section className="rounded-3xl bg-white p-5 shadow" aria-label="Tus reportes">
+      <section
+        id="mis-reportes"
+        className="scroll-mt-4 rounded-3xl bg-white p-5 shadow"
+        aria-label="Tus reportes"
+      >
         <h2 className="text-xl font-bold">Mis reportes ({historial.length})</h2>
         <ul className="mt-3 flex flex-col gap-2">
           {historial.map((r) => (
