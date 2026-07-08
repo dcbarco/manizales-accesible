@@ -335,7 +335,15 @@ export function Mapa({
     });
   }, [centrarEn]);
 
-  return <div ref={contenedorRef} className="absolute inset-0" aria-label="Mapa de reportes" />;
+  // El contenedor externo aporta el tamaño (absolute inset-0). El div interno
+  // es el que recibe MapLibre: NO usamos inset-0 ahí porque MapLibre le aplica
+  // .maplibregl-map { position: relative }, lo que anularía el inset y colapsaría
+  // su altura a 0. Con h-full/w-full llena el contenedor sin depender del inset.
+  return (
+    <div className="absolute inset-0">
+      <div ref={contenedorRef} className="h-full w-full" aria-label="Mapa de reportes" />
+    </div>
+  );
 }
 
 // ---------- Globo flotante con miniatura de la foto ----------
