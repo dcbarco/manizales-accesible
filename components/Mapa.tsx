@@ -9,6 +9,10 @@ import { CENTRO_MANIZALES } from "@/lib/useGeolocalizacion";
 
 export type ModoMapa = "inmersiva" | "general";
 
+// Píxeles que se baja el centro de la cámara en vista inmersiva, para que el
+// avatar quede más abajo y se vea más terreno por delante.
+const DESPLAZAMIENTO_AVATAR = 190;
+
 interface Props {
   modo: ModoMapa;
   posicion: Posicion | null;
@@ -36,6 +40,15 @@ function camaraDesdeAcercamiento(t: number) {
   };
 }
 
+// Flecha de dirección: se dibuja "sobre el suelo" (pitchAlignment: map) delante
+// del avatar y apunta siempre al rumbo de avance del usuario. Apunta al norte
+// en su marco local; MapLibre la rota al heading con setRotation.
+const SVG_FLECHA = `
+<svg viewBox="0 0 60 96" class="flecha-direccion" aria-hidden="true">
+  <path d="M30 4 L48 40 L30 30 L12 40 Z"
+        fill="#f76707" stroke="#ffffff" stroke-width="3" stroke-linejoin="round"/>
+</svg>`;
+
 // Avatar minimalista y unisex (SVG original, dos estados por CSS)
 const SVG_AVATAR = `
 <svg viewBox="0 0 48 64" class="avatar-usuario quieto" aria-hidden="true">
@@ -61,6 +74,8 @@ export function Mapa({
   const contenedorRef = useRef<HTMLDivElement>(null);
   const mapaRef = useRef<maplibregl.Map | null>(null);
   const avatarRef = useRef<maplibregl.Marker | null>(null);
+  const flechaRef = useRef<maplibregl.Marker | null>(null);
+  const ultimoHeadingRef = useRef<number | null>(null);
   const globosRef = useRef<Map<string, maplibregl.Marker>>(new Map());
   const datosRef = useRef<Map<string, Reporte>>(new Map());
   const onSeleccionarRef = useRef(onSeleccionar);
@@ -78,9 +93,10 @@ export function Mapa({
       container: contenedorRef.current,
       style: process.env.NEXT_PUBLIC_MAP_STYLE_URL as string,
       center: [CENTRO_MANIZALES.lng, CENTRO_MANIZALES.lat],
-      zoom: 17,
-      pitch: 60, // vista 3D inclinada casi a ras de suelo
+      zoom: 18.4,
+      pitch: 61, // arranca con mayor incidencia de la perspectiva del avatar
       bearing: 0,
+      // Atribución compacta: solo el ícono "ⓘ" que se expande al tocarlo
       attributionControl: { compact: true },
     });
     mapaRef.current = mapa;
@@ -213,9 +229,27 @@ export function Mapa({
       sincronizarModo();
     });
 
-    // Avatar del usuario, centrado en su posición
+    // Flecha de dirección sobre el suelo, DEBAJO del avatar en apilamiento.
+    // rotationAlignment/pitchAlignment "map" la mantienen pegada al terreno y
+    // girando con el mapa, para que siempre marque el rumbo real de avance.
+    const elFlecha = document.createElement("div");
+    elFlecha.innerHTML = SVG_FLECHA;
+    const flecha = new maplibregl.Marker({
+      element: elFlecha,
+      anchor: "center",
+      rotationAlignment: "map",
+      pitchAlignment: "map",
+    })
+      .setLngLat([CENTRO_MANIZALES.lng, CENTRO_MANIZALES.lat])
+      .addTo(mapa);
+    elFlecha.style.display = "none"; // se muestra al conocer el primer rumbo
+    flechaRef.current = flecha;
+
+    // Avatar del usuario, centrado en su posición. La clase le fija un z-index
+    // alto (CSS !important) para que NUNCA quede tapado por los globos.
     const elAvatar = document.createElement("div");
     elAvatar.innerHTML = SVG_AVATAR;
+    elAvatar.className = "marcador-avatar";
     elAvatar.setAttribute("role", "img");
     elAvatar.setAttribute("aria-label", "Tu ubicación actual");
     const avatar = new maplibregl.Marker({ element: elAvatar, anchor: "bottom" })
@@ -227,6 +261,7 @@ export function Mapa({
       estiloListoRef.current = false;
       globos.forEach((m) => m.remove());
       globos.clear();
+      flecha.remove();
       mapa.remove();
       mapaRef.current = null;
     };
@@ -291,13 +326,20 @@ export function Mapa({
         mapa.setLayoutProperty(capa, "visibility", enGeneral ? "visible" : "none");
       }
     }
+    // La flecha de dirección solo tiene sentido en la vista inmersiva
+    flechaRef.current?.getElement().style.setProperty(
+      "display",
+      !enGeneral && ultimoHeadingRef.current !== null ? "" : "none"
+    );
+
     if (enGeneral) {
-      // Panorama de la ciudad, ligeramente inclinado
+      // Panorama de la ciudad, ligeramente inclinado y sin desplazamiento
       mapa.flyTo({
         center: [CENTRO_MANIZALES.lng, CENTRO_MANIZALES.lat],
         zoom: 13.2,
         pitch: 30,
         bearing: 0,
+        padding: { top: 0, bottom: 0, left: 0, right: 0 },
         duration: 1200,
       });
     } else {
@@ -308,6 +350,9 @@ export function Mapa({
         center: pos ? [pos.lng, pos.lat] : [CENTRO_MANIZALES.lng, CENTRO_MANIZALES.lat],
         zoom,
         pitch,
+        // Desplaza el centro hacia abajo: el avatar queda en el tercio inferior
+        // y se gana perspectiva hacia adelante (puntos lejanos visibles).
+        padding: { top: DESPLAZAMIENTO_AVATAR, bottom: 0, left: 0, right: 0 },
         duration: 1200,
       });
     }
@@ -343,6 +388,18 @@ export function Mapa({
     const mapa = mapaRef.current;
     if (!mapa || !posicion) return;
     avatarRef.current?.setLngLat([posicion.lng, posicion.lat]);
+
+    // Flecha de dirección: sigue al avatar y apunta al último rumbo conocido.
+    // El GPS solo entrega heading al moverse, así que conservamos el último.
+    flechaRef.current?.setLngLat([posicion.lng, posicion.lat]);
+    if (posicion.heading !== null && !Number.isNaN(posicion.heading)) {
+      ultimoHeadingRef.current = posicion.heading;
+      flechaRef.current?.setRotation(posicion.heading);
+      if (modoRef.current === "inmersiva") {
+        flechaRef.current?.getElement().style.setProperty("display", "");
+      }
+    }
+
     if (modoRef.current === "inmersiva") {
       // La cámara sigue al usuario; si camina, gira hacia su rumbo
       mapa.easeTo({

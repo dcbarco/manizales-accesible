@@ -28,11 +28,13 @@ export function Logo({ tamano = 96 }: { tamano?: number }) {
 export function PantallaCarga({ mensaje }: { mensaje: string }) {
   return (
     <div
-      className="fixed inset-0 z-[90] flex flex-col items-center justify-center gap-6 bg-fondo"
+      className="fixed inset-0 z-[90] flex flex-col items-center justify-center gap-10 bg-fondo"
       role="status"
       aria-live="polite"
     >
-      <div className="relative flex items-center justify-center">
+      {/* Tamaño fijo igual al anillo para que el layout reserve su espacio y el
+          texto quede claramente separado (antes se solapaban). */}
+      <div className="relative flex h-36 w-36 items-center justify-center">
         <div className="anillo-girando absolute h-36 w-36 rounded-full border-8 border-orange-200 border-t-cta" />
         <div className="logo-latido">
           <Logo tamano={80} />

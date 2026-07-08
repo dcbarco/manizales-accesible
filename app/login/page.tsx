@@ -89,6 +89,11 @@ export default function PaginaLogin() {
       <Link href="/" className="text-lg text-gray-600 underline underline-offset-4">
         ← Volver al inicio
       </Link>
+
+      {/* Créditos del equipo desarrollador, en letra muy pequeña */}
+      <p className="mt-4 max-w-xs text-center text-xs leading-snug text-gray-400">
+        Desarrollado por el equipo del Centro de Ciencia Francisco José de Caldas
+      </p>
     </main>
   );
 }

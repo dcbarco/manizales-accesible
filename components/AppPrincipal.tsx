@@ -25,8 +25,9 @@ export function AppPrincipal() {
   const { posicion, enMovimiento, permiso, reintentar } = useGeolocalizacion();
 
   const [modo, setModo] = useState<ModoMapa>("inmersiva");
-  // Acercamiento de la cámara (0 = vista aérea/cenital, 1 = a nivel del avatar)
-  const [acercamiento, setAcercamiento] = useState(0.7);
+  // Acercamiento de la cámara (0 = vista aérea/cenital, 1 = a nivel del avatar).
+  // Arranca alto para privilegiar la perspectiva del avatar sin llegar al tope.
+  const [acercamiento, setAcercamiento] = useState(0.82);
   const [filtro, setFiltro] = useState<Filtro>("todo");
   const [reportes, setReportes] = useState<Reporte[]>([]);
   const [seleccionadoId, setSeleccionadoId] = useState<string | null>(null);

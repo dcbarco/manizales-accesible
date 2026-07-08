@@ -42,6 +42,21 @@ body {
   filter: drop-shadow(0 3px 4px rgb(0 0 0 / 0.35));
 }
 
+/* El avatar siempre por encima de los globos de reporte (MapLibre asigna el
+   z-index de cada marcador por su posición vertical; con !important lo fijamos
+   por encima sin que lo recalcule cada cuadro). */
+.marcador-avatar {
+  z-index: 6000 !important;
+}
+
+/* Flecha de dirección sobre el suelo */
+.flecha-direccion {
+  width: 44px;
+  height: 70px;
+  display: block;
+  filter: drop-shadow(0 2px 3px rgb(0 0 0 / 0.35));
+}
+
 /* Estado quieto: respiración suave */
 .avatar-usuario.quieto .avatar-cuerpo {
   animation: respirar 2.6s ease-in-out infinite;
