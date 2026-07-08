@@ -5,9 +5,14 @@ import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { Posicion, Reporte } from "@/lib/tipos";
 import { colorReporte } from "@/lib/gamificacion";
-import { CENTRO_MANIZALES } from "@/lib/useGeolocalizacion";
+import { CENTRO_MANIZALES, distanciaMetros } from "@/lib/useGeolocalizacion";
 
 export type ModoMapa = "inmersiva" | "general";
+
+// Distancia (m) a la que empieza a mostrarse el anillo de radar de un punto.
+const RADIO_RADAR_VISIBLE = 130;
+// Conjunto vacío estable para el valor por defecto de idsEnZona
+const SIN_ZONA: Set<string> = new Set();
 
 // Píxeles que se baja el centro de la cámara en vista inmersiva, para que el
 // avatar quede más abajo y se vea más terreno por delante.
@@ -26,6 +31,8 @@ interface Props {
    * 0 = lejos, vista casi cenital (aérea); 1 = cerca, a nivel del avatar.
    */
   acercamiento?: number;
+  /** IDs de reportes dentro de la zona de influencia (radar activo/pulsante) */
+  idsEnZona?: Set<string>;
 }
 
 // Traduce el acercamiento (0..1) a los parámetros de cámara. Al alejarse
@@ -70,6 +77,7 @@ export function Mapa({
   onSeleccionar,
   centrarEn,
   acercamiento = 0.7,
+  idsEnZona = SIN_ZONA,
 }: Props) {
   const contenedorRef = useRef<HTMLDivElement>(null);
   const mapaRef = useRef<maplibregl.Map | null>(null);
@@ -77,6 +85,9 @@ export function Mapa({
   const flechaRef = useRef<maplibregl.Marker | null>(null);
   const ultimoHeadingRef = useRef<number | null>(null);
   const globosRef = useRef<Map<string, maplibregl.Marker>>(new Map());
+  const radaresRef = useRef<Map<string, maplibregl.Marker>>(new Map());
+  const idsEnZonaRef = useRef(idsEnZona);
+  idsEnZonaRef.current = idsEnZona;
   const datosRef = useRef<Map<string, Reporte>>(new Map());
   const onSeleccionarRef = useRef(onSeleccionar);
   const modoRef = useRef(modo);
@@ -227,6 +238,7 @@ export function Mapa({
 
       sincronizarReportes();
       sincronizarModo();
+      sincronizarRadares();
     });
 
     // Flecha de dirección sobre el suelo, DEBAJO del avatar en apilamiento.
@@ -257,10 +269,13 @@ export function Mapa({
       .addTo(mapa);
     avatarRef.current = avatar;
 
+    const radares = radaresRef.current;
     return () => {
       estiloListoRef.current = false;
       globos.forEach((m) => m.remove());
       globos.clear();
+      radares.forEach((m) => m.remove());
+      radares.clear();
       flecha.remove();
       mapa.remove();
       mapaRef.current = null;
@@ -315,6 +330,62 @@ export function Mapa({
   useEffect(() => {
     sincronizarReportes();
   }, [reportes, modo]);
+
+  // ---------- Anillos de radar (zona de influencia) sobre el suelo ----------
+  // Solo se dibujan para los puntos cercanos al avatar en vista inmersiva; los
+  // que están dentro de la zona de influencia pulsan (clase "activo").
+  function sincronizarRadares() {
+    const mapa = mapaRef.current;
+    if (!mapa || !estiloListoRef.current) return;
+    const radares = radaresRef.current;
+    const pos = posicionRef.current;
+    const inmersiva = modoRef.current === "inmersiva";
+    const lista = reportesRef.current;
+
+    // Qué puntos merecen anillo ahora mismo
+    const cercanos = new Set<string>();
+    if (pos && inmersiva) {
+      for (const r of lista) {
+        const d = distanciaMetros(pos.lat, pos.lng, r.latitud, r.longitud);
+        if (d <= RADIO_RADAR_VISIBLE) cercanos.add(r.id);
+      }
+    }
+
+    // Quitar anillos que ya no aplican
+    for (const [id, m] of radares) {
+      if (!cercanos.has(id)) {
+        m.remove();
+        radares.delete(id);
+      }
+    }
+
+    const datos = datosRef.current;
+    for (const id of cercanos) {
+      const r = datos.get(id);
+      if (!r) continue;
+      let m = radares.get(id);
+      if (!m) {
+        const el = document.createElement("div");
+        el.className = "radar-anillo";
+        m = new maplibregl.Marker({
+          element: el,
+          anchor: "center",
+          pitchAlignment: "map",
+          rotationAlignment: "map",
+        })
+          .setLngLat([r.longitud, r.latitud])
+          .addTo(mapa);
+        radares.set(id, m);
+      }
+      const el = m.getElement();
+      el.style.setProperty("--color-radar", colorReporte(r.tipo, r.estado));
+      el.classList.toggle("activo", idsEnZonaRef.current.has(id));
+    }
+  }
+
+  useEffect(() => {
+    sincronizarRadares();
+  }, [reportes, modo, posicion, idsEnZona]);
 
   // ---------- Cambio de modo: cámara y visibilidad de capas ----------
   function sincronizarModo() {

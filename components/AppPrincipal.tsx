@@ -11,11 +11,34 @@ import { PantallaCarga } from "./PantallaCarga";
 import { AvisoSeguridad } from "./AvisoSeguridad";
 import { FlujoReporte } from "./FlujoReporte";
 import { DetalleReporte } from "./DetalleReporte";
+import { TarjetaCercania } from "./TarjetaCercania";
+import { useProximidad, type ReporteCercano } from "@/lib/useProximidad";
 import type { Reporte, TipoReporte } from "@/lib/tipos";
 
 type Filtro = "todo" | TipoReporte;
 
 const CLAVE_AVISO = "manizales-accesible-aviso-visto";
+
+// Notificación del navegador (best-effort): solo si el usuario dio permiso.
+// Si no hay permiso, la app se apoya en la tarjeta dentro de la pantalla.
+function notificarNavegador(puntos: ReporteCercano[]) {
+  if (typeof Notification === "undefined" || Notification.permission !== "granted") {
+    return;
+  }
+  const titulo =
+    puntos.length === 1
+      ? "Tienes un punto cerca"
+      : `Tienes ${puntos.length} puntos cerca`;
+  const cuerpo =
+    puntos.length === 1
+      ? `${puntos[0].tipo === "barrera" ? "Barrera" : "Espacio de bienestar"}: ${puntos[0].descripcion.slice(0, 80)}`
+      : "Toca la app para ver los lugares por visitar y corroborar.";
+  try {
+    new Notification(titulo, { body: cuerpo, lang: "es" });
+  } catch {
+    // Algunos navegadores requieren Service Worker; se ignora silenciosamente
+  }
+}
 
 // Pantalla principal: mapa inmersivo/general + reportes + navegación
 export function AppPrincipal() {
@@ -126,6 +149,36 @@ export function AppPrincipal() {
     [reportes, seleccionadoId]
   );
 
+  // ---------- Proximidad: radar + notificación de puntos cercanos ----------
+  const { enZona, entrada } = useProximidad(posicion, filtrados);
+  const idsEnZona = useMemo(() => new Set(enZona.map((r) => r.id)), [enZona]);
+  const [avisoCerrado, setAvisoCerrado] = useState(false);
+
+  // Al entrar a la zona de un punto nuevo: reabrir la tarjeta y, si el usuario
+  // dio permiso, mandar una notificación del navegador.
+  useEffect(() => {
+    if (entrada === 0 || !sesion || enZona.length === 0) return;
+    setAvisoCerrado(false);
+    notificarNavegador(enZona);
+  }, [entrada]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Solicita permiso de notificaciones una vez tras iniciar sesión
+  useEffect(() => {
+    if (!sesion || typeof Notification === "undefined") return;
+    if (Notification.permission === "default") {
+      Notification.requestPermission().catch(() => {});
+    }
+  }, [sesion]);
+
+  const mostrarAvisoCercania =
+    !!sesion &&
+    modo === "inmersiva" &&
+    enZona.length > 0 &&
+    !avisoCerrado &&
+    !seleccionado &&
+    !mostrarFlujo &&
+    !mostrarAviso;
+
   function abrirFlujo() {
     if (!sesion) {
       router.push("/login");
@@ -176,6 +229,7 @@ export function AppPrincipal() {
         onSeleccionar={(r) => setSeleccionadoId(r.id)}
         centrarEn={centrarEn}
         acercamiento={acercamiento}
+        idsEnZona={idsEnZona}
       />
 
       {/* ---------- Slider lateral de cámara (solo vista inmersiva) ----------
@@ -282,6 +336,15 @@ export function AppPrincipal() {
           {enGeneral ? "Volver" : "Mapa"}
         </button>
       </div>
+
+      {/* ---------- Aviso de puntos cercanos (radar de proximidad) ---------- */}
+      {mostrarAvisoCercania && (
+        <TarjetaCercania
+          puntos={enZona}
+          onSeleccionar={(r) => setSeleccionadoId(r.id)}
+          onCerrar={() => setAvisoCerrado(true)}
+        />
+      )}
 
       {/* ---------- Capas modales ---------- */}
       {mostrarAviso && <AvisoSeguridad onCerrar={cerrarAviso} />}

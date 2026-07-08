@@ -96,6 +96,32 @@ body {
   50% { transform: rotate(18deg); }
 }
 
+/* ============ Anillo de radar (zona de influencia) ============ */
+.radar-anillo {
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  box-sizing: border-box;
+  border: 3px solid var(--color-radar, #f76707);
+  background: color-mix(in srgb, var(--color-radar, #f76707) 14%, transparent);
+  pointer-events: none; /* no debe interceptar toques sobre el mapa/globos */
+}
+/* Dentro de la zona de influencia: pulso tipo radar */
+.radar-anillo.activo {
+  animation: radar-pulso 1.7s ease-out infinite;
+}
+@keyframes radar-pulso {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-radar, #f76707) 55%, transparent);
+  }
+  70% {
+    box-shadow: 0 0 0 24px color-mix(in srgb, var(--color-radar, #f76707) 0%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-radar, #f76707) 0%, transparent);
+  }
+}
+
 /* ============ Globos de reporte en el mapa ============ */
 .globo-reporte {
   cursor: pointer;
@@ -231,6 +257,7 @@ body {
   .avatar-usuario .pierna-der,
   .logo-latido,
   .boton-enviar-vivo,
+  .radar-anillo.activo,
   .aparece-abajo,
   .aparece-zoom {
     animation: none !important;
