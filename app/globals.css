@@ -114,6 +114,10 @@ body {
   position: relative;
   width: 44px;
   height: 200px;
+  /* Evita que el arrastre sobre el slider dispare el pull-to-refresh o el
+     scroll de la página en el celular: el gesto lo maneja solo el control. */
+  touch-action: none;
+  overscroll-behavior: contain;
 }
 .slider-camara input[type="range"] {
   position: absolute;
@@ -128,6 +132,7 @@ body {
   appearance: none;
   background: transparent;
   cursor: pointer;
+  touch-action: none;
 }
 /* Riel */
 .slider-camara input[type="range"]::-webkit-slider-runnable-track {

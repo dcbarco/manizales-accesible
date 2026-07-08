@@ -182,8 +182,8 @@ export function AppPrincipal() {
           Controla la altura y la inclinación de la cámara: arriba = vista
           aérea (cenital); abajo = a nivel del avatar. */}
       {!enGeneral && (
-        <div className="absolute right-3 top-1/2 z-10 -translate-y-1/2">
-          <div className="flex flex-col items-center gap-2 rounded-full bg-white/95 px-2 py-3 shadow-lg">
+        <div className="absolute right-3 top-1/2 z-10 -translate-y-1/2 touch-none">
+          <div className="flex touch-none flex-col items-center gap-2 rounded-full bg-white/95 px-2 py-3 shadow-lg">
             <span className="text-xl" aria-hidden="true">🛰️</span>
             <div className="slider-camara">
               <input
