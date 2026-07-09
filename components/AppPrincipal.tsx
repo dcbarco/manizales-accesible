@@ -164,10 +164,11 @@ export function AppPrincipal() {
   // El panel de notificaciones se abre/cierra con la campana
   const [mostrarNotificaciones, setMostrarNotificaciones] = useState(false);
 
-  // Al entrar a la zona de un punto nuevo: notificación del navegador (si hay
-  // permiso). El indicador visible es la campana con el globo rojo de conteo.
+  // Al entrar a la zona de un punto nuevo: la notificación salta a la pantalla
+  // (se abre el panel) y, si hay permiso, se envía también la del navegador.
   useEffect(() => {
     if (entrada === 0 || !sesion || enZona.length === 0) return;
+    setMostrarNotificaciones(true);
     notificarNavegador(enZona);
   }, [entrada]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -408,6 +409,10 @@ export function AppPrincipal() {
           reporte={seleccionado}
           onCerrar={() => setSeleccionadoId(null)}
           onActualizar={actualizarReporte}
+          onEliminar={(id) => {
+            setReportes((lista) => lista.filter((r) => r.id !== id));
+            setSeleccionadoId(null);
+          }}
         />
       )}
     </main>

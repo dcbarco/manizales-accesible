@@ -16,20 +16,61 @@ interface Props {
   reporte: Reporte;
   onCerrar: () => void;
   onActualizar: (reporte: Reporte) => void;
+  onEliminar: (id: string) => void;
 }
 
 // Hoja de detalle de un reporte: foto, autor, estado, corroboración
 // estilo Waze (3 botones según tipo) y comentarios en tiempo real.
-export function DetalleReporte({ reporte, onCerrar, onActualizar }: Props) {
+export function DetalleReporte({ reporte, onCerrar, onActualizar, onEliminar }: Props) {
   const { sesion, avisarAccion } = useAuth();
   const [comentarios, setComentarios] = useState<Comentario[]>([]);
   const [texto, setTexto] = useState("");
   const [mensaje, setMensaje] = useState<string | null>(null);
   const [ocupado, setOcupado] = useState(false);
   const [fotoAmpliada, setFotoAmpliada] = useState(false);
+  const [editando, setEditando] = useState(false);
+  const [textoEdicion, setTextoEdicion] = useState(reporte.descripcion);
 
   const esBarrera = reporte.tipo === "barrera";
   const color = colorReporte(reporte.tipo, reporte.estado);
+  // ¿El reporte es del usuario que lo está viendo? (puede editarlo/borrarlo)
+  const esAutor = !!sesion && sesion.user.id === reporte.usuario_id;
+
+  // Guardar la edición de la descripción del propio reporte
+  async function guardarEdicion() {
+    const nueva = textoEdicion.trim();
+    if (!nueva || nueva === reporte.descripcion) {
+      setEditando(false);
+      return;
+    }
+    setOcupado(true);
+    const { error } = await supabase
+      .from("reportes")
+      .update({ descripcion: nueva })
+      .eq("id", reporte.id);
+    setOcupado(false);
+    if (error) {
+      setMensaje("No pudimos guardar los cambios. Intenta de nuevo.");
+      return;
+    }
+    onActualizar({ ...reporte, descripcion: nueva });
+    setEditando(false);
+  }
+
+  // Borrar el propio reporte
+  async function borrarReporte() {
+    if (!confirm("¿Seguro que quieres borrar este reporte? No se puede deshacer.")) {
+      return;
+    }
+    setOcupado(true);
+    const { error } = await supabase.from("reportes").delete().eq("id", reporte.id);
+    setOcupado(false);
+    if (error) {
+      setMensaje("No pudimos borrar el reporte. Intenta de nuevo.");
+      return;
+    }
+    onEliminar(reporte.id);
+  }
 
   const cargarComentarios = useCallback(async () => {
     const { data } = await supabase
@@ -184,7 +225,40 @@ export function DetalleReporte({ reporte, onCerrar, onActualizar }: Props) {
             </span>
           </div>
 
-          <p className="text-lg leading-relaxed">{reporte.descripcion}</p>
+          {editando ? (
+            <div className="flex flex-col gap-2">
+              <label htmlFor="editar-desc" className="sr-only">
+                Editar descripción
+              </label>
+              <textarea
+                id="editar-desc"
+                value={textoEdicion}
+                onChange={(e) => setTextoEdicion(e.target.value)}
+                rows={3}
+                className="w-full rounded-xl border-2 border-gray-300 p-3 text-lg"
+              />
+              <div className="flex gap-2">
+                <button
+                  onClick={guardarEdicion}
+                  disabled={ocupado}
+                  className="min-h-12 flex-1 rounded-xl bg-cta text-lg font-bold text-white active:scale-95 disabled:opacity-50"
+                >
+                  Guardar
+                </button>
+                <button
+                  onClick={() => {
+                    setTextoEdicion(reporte.descripcion);
+                    setEditando(false);
+                  }}
+                  className="min-h-12 flex-1 rounded-xl border-2 border-gray-300 text-lg font-bold"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          ) : (
+            <p className="text-lg leading-relaxed">{reporte.descripcion}</p>
+          )}
           {reporte.direccion_texto && (
             <p className="text-lg text-gray-700">📍 {reporte.direccion_texto}</p>
           )}
@@ -304,6 +378,25 @@ export function DetalleReporte({ reporte, onCerrar, onActualizar }: Props) {
               </p>
             )}
           </div>
+
+          {/* Acciones del autor: editar o borrar su propio reporte */}
+          {esAutor && !editando && (
+            <div className="flex gap-2">
+              <button
+                onClick={() => setEditando(true)}
+                className="min-h-14 flex-1 rounded-2xl border-2 border-tinta text-lg font-bold text-tinta active:scale-95 transition"
+              >
+                ✏️ Editar
+              </button>
+              <button
+                onClick={borrarReporte}
+                disabled={ocupado}
+                className="min-h-14 flex-1 rounded-2xl border-2 border-red-600 text-lg font-bold text-red-600 active:scale-95 transition disabled:opacity-50"
+              >
+                🗑️ Borrar
+              </button>
+            </div>
+          )}
 
           <button
             onClick={onCerrar}

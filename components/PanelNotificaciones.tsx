@@ -93,8 +93,14 @@ export function PanelNotificaciones({
                     <span className="mt-0.5 block truncate text-lg">
                       {r.descripcion}
                     </span>
-                    <span className="text-base font-semibold text-gray-500">
-                      A {Math.round(r.distancia)} m · Toca para corroborar
+                    <span className="mt-1 flex items-center gap-2">
+                      {/* Distancia resaltada en píldora naranja */}
+                      <span className="rounded-full bg-cta px-2.5 py-0.5 text-sm font-extrabold text-white">
+                        A {Math.round(r.distancia)} m
+                      </span>
+                      <span className="text-base font-semibold text-gray-500">
+                        Toca para corroborar
+                      </span>
                     </span>
                   </span>
                 </button>

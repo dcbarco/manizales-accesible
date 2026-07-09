@@ -314,6 +314,13 @@ create policy "reportes lectura publica" on public.reportes
   for select using (true);
 create policy "reportes insertar propio" on public.reportes
   for insert to authenticated with check (usuario_id = auth.uid());
+-- El autor puede editar (descripción) o borrar sus propios reportes
+create policy "reportes actualizar propio" on public.reportes
+  for update to authenticated
+  using (usuario_id = auth.uid()) with check (usuario_id = auth.uid());
+create policy "reportes eliminar propio" on public.reportes
+  for delete to authenticated
+  using (usuario_id = auth.uid());
 
 -- votos_reporte
 create policy "votos lectura publica" on public.votos_reporte
