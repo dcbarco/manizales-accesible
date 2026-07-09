@@ -387,12 +387,14 @@ set search_path = public as $$
 $$;
 
 -- Un usuario normal no puede cambiarse a sí mismo baneado/es_admin
+-- auth.uid() NULL (SQL Editor / service-role) puede asignar el primer admin
 create or replace function public.proteger_flags_perfil()
 returns trigger language plpgsql security definer
 set search_path = public as $$
 begin
   if (new.baneado is distinct from old.baneado
       or new.es_admin is distinct from old.es_admin)
+     and auth.uid() is not null
      and not public.es_admin(auth.uid()) then
     new.baneado := old.baneado;
     new.es_admin := old.es_admin;

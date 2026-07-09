@@ -25,12 +25,16 @@ $$;
 
 -- 3) Proteger flags sensibles: un usuario normal NO puede cambiarse a sí mismo
 --    baneado/es_admin (revierte el cambio salvo que quien edita sea admin).
+-- Nota: cuando auth.uid() es NULL (SQL Editor / service-role) se PERMITE el
+-- cambio, para poder asignar el primer admin desde el editor. Los usuarios
+-- anónimos no llegan aquí porque RLS ya les impide actualizar perfiles.
 create or replace function public.proteger_flags_perfil()
 returns trigger language plpgsql security definer
 set search_path = public as $$
 begin
   if (new.baneado is distinct from old.baneado
       or new.es_admin is distinct from old.es_admin)
+     and auth.uid() is not null
      and not public.es_admin(auth.uid()) then
     new.baneado := old.baneado;
     new.es_admin := old.es_admin;
