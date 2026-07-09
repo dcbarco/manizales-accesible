@@ -70,4 +70,5 @@ export interface Posicion {
   lng: number;
   heading: number | null;
   speed: number | null;
+  precision: number | null; // exactitud del GPS en metros (coords.accuracy)
 }

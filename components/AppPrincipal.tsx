@@ -11,13 +11,15 @@ import { PantallaCarga } from "./PantallaCarga";
 import { AvisoSeguridad } from "./AvisoSeguridad";
 import { FlujoReporte } from "./FlujoReporte";
 import { DetalleReporte } from "./DetalleReporte";
-import { TarjetaCercania } from "./TarjetaCercania";
+import { PanelNotificaciones } from "./PanelNotificaciones";
+import { ModalIntro } from "./ModalIntro";
 import { useProximidad, type ReporteCercano } from "@/lib/useProximidad";
 import type { Reporte, TipoReporte } from "@/lib/tipos";
 
 type Filtro = "todo" | TipoReporte;
 
 const CLAVE_AVISO = "manizales-accesible-aviso-visto";
+const CLAVE_INTRO = "manizales-accesible-intro-vista";
 
 // Notificación del navegador (best-effort): solo si el usuario dio permiso.
 // Si no hay permiso, la app se apoya en la tarjeta dentro de la pantalla.
@@ -56,17 +58,24 @@ export function AppPrincipal() {
   const [seleccionadoId, setSeleccionadoId] = useState<string | null>(null);
   const [mostrarFlujo, setMostrarFlujo] = useState(false);
   const [mostrarAviso, setMostrarAviso] = useState(false);
+  const [mostrarIntro, setMostrarIntro] = useState(false);
   const [sinUbicacion, setSinUbicacion] = useState(false);
   const [centrarEn, setCentrarEn] = useState<{ lat: number; lng: number } | null>(null);
 
-  // Aviso de seguridad: solo la primera vez (persistido en localStorage)
+  // Aviso de seguridad y modal de inicio: solo la primera vez (localStorage)
   useEffect(() => {
     if (!localStorage.getItem(CLAVE_AVISO)) setMostrarAviso(true);
+    if (!localStorage.getItem(CLAVE_INTRO)) setMostrarIntro(true);
   }, []);
 
   function cerrarAviso() {
     localStorage.setItem(CLAVE_AVISO, "1");
     setMostrarAviso(false);
+  }
+
+  function cerrarIntro() {
+    localStorage.setItem(CLAVE_INTRO, "1");
+    setMostrarIntro(false);
   }
 
   // Carga inicial de reportes con el perfil del autor
@@ -152,8 +161,8 @@ export function AppPrincipal() {
   // ---------- Proximidad: radar + notificación de puntos cercanos ----------
   const { enZona, entrada } = useProximidad(posicion, filtrados);
   const idsEnZona = useMemo(() => new Set(enZona.map((r) => r.id)), [enZona]);
-  // La lista de puntos cercanos se abre/cierra con la campana de notificaciones
-  const [mostrarCercania, setMostrarCercania] = useState(false);
+  // El panel de notificaciones se abre/cierra con la campana
+  const [mostrarNotificaciones, setMostrarNotificaciones] = useState(false);
 
   // Al entrar a la zona de un punto nuevo: notificación del navegador (si hay
   // permiso). El indicador visible es la campana con el globo rojo de conteo.
@@ -170,18 +179,13 @@ export function AppPrincipal() {
     }
   }, [sesion]);
 
-  // Si ya no hay puntos cerca, cierra el listado automáticamente
-  useEffect(() => {
-    if (enZona.length === 0) setMostrarCercania(false);
-  }, [enZona.length]);
-
-  const mostrarAvisoCercania =
+  const mostrarPanelNotif =
     !!sesion &&
-    mostrarCercania &&
-    enZona.length > 0 &&
+    mostrarNotificaciones &&
     !seleccionado &&
     !mostrarFlujo &&
-    !mostrarAviso;
+    !mostrarAviso &&
+    !mostrarIntro;
 
   function abrirFlujo() {
     if (!sesion) {
@@ -269,11 +273,11 @@ export function AppPrincipal() {
             {/* Campana de notificaciones con globo rojo de conteo */}
             {sesion && (
               <button
-                onClick={() => setMostrarCercania((v) => !v)}
+                onClick={() => setMostrarNotificaciones((v) => !v)}
                 aria-label={
                   enZona.length > 0
-                    ? `Ver ${enZona.length} punto(s) cerca de ti`
-                    : "No tienes puntos cerca"
+                    ? `Notificaciones: ${enZona.length} punto(s) cerca de ti`
+                    : "Notificaciones"
                 }
                 className="relative flex h-14 w-14 items-center justify-center rounded-full bg-white/95 text-2xl shadow"
               >
@@ -365,16 +369,26 @@ export function AppPrincipal() {
         </button>
       </div>
 
-      {/* ---------- Aviso de puntos cercanos (radar de proximidad) ---------- */}
-      {mostrarAvisoCercania && (
-        <TarjetaCercania
+      {/* ---------- Panel de notificaciones (intro + radar de proximidad) ---------- */}
+      {mostrarPanelNotif && (
+        <PanelNotificaciones
           puntos={enZona}
-          onSeleccionar={(r) => setSeleccionadoId(r.id)}
-          onCerrar={() => setMostrarCercania(false)}
+          onSeleccionar={(r) => {
+            setMostrarNotificaciones(false);
+            setSeleccionadoId(r.id);
+          }}
+          onAbrirIntro={() => {
+            setMostrarNotificaciones(false);
+            setMostrarIntro(true);
+          }}
+          onCerrar={() => setMostrarNotificaciones(false)}
         />
       )}
 
       {/* ---------- Capas modales ---------- */}
+      {mostrarIntro && (
+        <ModalIntro onCerrar={cerrarIntro} onReportar={abrirFlujo} />
+      )}
       {mostrarAviso && <AvisoSeguridad onCerrar={cerrarAviso} />}
 
       {mostrarFlujo && (

@@ -7,42 +7,61 @@ import { colorReporte, etiquetaEstado } from "@/lib/gamificacion";
 interface Props {
   puntos: ReporteCercano[];
   onSeleccionar: (reporte: Reporte) => void;
+  onAbrirIntro: () => void;
   onCerrar: () => void;
 }
 
-// Tarjeta flotante que avisa de los puntos dentro de la zona de influencia.
-// Invita a visitarlos para confirmar, recomendar o reportar si ya no están.
-// Con un solo punto muestra una acción directa; con varios, un listado.
-export function TarjetaCercania({ puntos, onSeleccionar, onCerrar }: Props) {
-  if (puntos.length === 0) return null;
-  const varios = puntos.length > 1;
-
+// Panel de notificaciones (se abre con la campana). Siempre incluye un aviso
+// persistente "Sobre la app" para releer la introducción, y debajo la lista de
+// puntos dentro de la zona de influencia (para confirmar, recomendar o avisar).
+export function PanelNotificaciones({
+  puntos,
+  onSeleccionar,
+  onAbrirIntro,
+  onCerrar,
+}: Props) {
   return (
     <div className="absolute inset-x-0 bottom-28 z-40 flex justify-center px-3">
       <div className="aparece-abajo w-full max-w-md rounded-3xl bg-white shadow-2xl">
         {/* Encabezado */}
         <div className="flex items-center justify-between gap-2 px-4 pt-4">
           <h2 className="flex items-center gap-2 text-xl font-extrabold">
-            <span aria-hidden="true">📍</span>
-            {varios
-              ? `Tienes ${puntos.length} puntos cerca`
-              : "Tienes un punto cerca"}
+            <span aria-hidden="true">🔔</span> Notificaciones
           </h2>
           <button
             onClick={onCerrar}
-            aria-label="Cerrar aviso de cercanía"
+            aria-label="Cerrar notificaciones"
             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gray-100 text-xl font-bold text-gray-600 active:scale-95"
           >
             ✕
           </button>
         </div>
 
-        <p className="px-4 pt-1 text-base text-gray-600">
-          Ayuda corroborando: confirma, recomienda o reporta si ya no está.
-        </p>
+        <ul className="mt-2 flex max-h-72 flex-col gap-2 overflow-y-auto px-3 pb-4">
+          {/* Notificación persistente: introducción de la app */}
+          <li>
+            <button
+              onClick={onAbrirIntro}
+              className="flex w-full items-center gap-3 rounded-2xl border-2 border-orange-200 bg-orange-50 p-3 text-left active:scale-[0.98] transition"
+            >
+              <span className="text-2xl" aria-hidden="true">ℹ️</span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-lg font-bold">
+                  ¿Qué es Manizales Accesible?
+                </span>
+                <span className="block text-base text-gray-600">
+                  Toca para releer de qué trata la app.
+                </span>
+              </span>
+            </button>
+          </li>
 
-        {/* Listado de puntos (desplazable si son muchos) */}
-        <ul className="mt-2 flex max-h-64 flex-col gap-2 overflow-y-auto px-3 pb-4">
+          {/* Puntos cercanos */}
+          {puntos.length > 0 && (
+            <li className="px-1 pt-1 text-base font-bold text-gray-500">
+              Cerca de ti ({puntos.length})
+            </li>
+          )}
           {puntos.map((r) => {
             const esBarrera = r.tipo === "barrera";
             const color = colorReporte(r.tipo, r.estado);
@@ -82,6 +101,13 @@ export function TarjetaCercania({ puntos, onSeleccionar, onCerrar }: Props) {
               </li>
             );
           })}
+
+          {puntos.length === 0 && (
+            <li className="px-1 pb-1 pt-1 text-base text-gray-500">
+              No tienes puntos cerca en este momento. Camina por la ciudad y te
+              avisaremos cuando estés cerca de uno.
+            </li>
+          )}
         </ul>
       </div>
     </div>

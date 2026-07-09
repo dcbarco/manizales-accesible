@@ -21,6 +21,7 @@ export function useGeolocalizacion() {
   const [enMovimiento, setEnMovimiento] = useState(false);
   const [permiso, setPermiso] = useState<EstadoPermiso>("pidiendo");
   const anteriorRef = useRef<{ lat: number; lng: number; t: number } | null>(null);
+  const suavizadaRef = useRef<{ lat: number; lng: number } | null>(null);
   const rachaRef = useRef(0); // lecturas consecutivas en el mismo sentido
   const watchIdRef = useRef<number | null>(null);
   const [intento, setIntento] = useState(0);
@@ -38,11 +39,35 @@ export function useGeolocalizacion() {
 
     const id = navigator.geolocation.watchPosition(
       (pos) => {
-        const { latitude, longitude, heading, speed } = pos.coords;
+        const { latitude, longitude, heading, speed, accuracy } = pos.coords;
         setPermiso("ok");
-        setPosicion({ lat: latitude, lng: longitude, heading, speed });
+
+        // Descarta lecturas muy imprecisas (p. ej. por red/wifi) cuando ya
+        // tenemos una referencia: evita "saltos" bruscos del avatar.
+        const ref = suavizadaRef.current;
+        if (ref && accuracy != null && accuracy > 60) {
+          // La ignoramos salvo que confirme un desplazamiento real y grande
+          const salto = distanciaMetros(ref.lat, ref.lng, latitude, longitude);
+          if (salto < accuracy) return;
+        }
+
+        // Suavizado exponencial de la posición mostrada: filtra el temblor del
+        // GPS en saltos pequeños (ruido) y "salta" en desplazamientos reales.
+        let lat = latitude;
+        let lng = longitude;
+        if (ref) {
+          const salto = distanciaMetros(ref.lat, ref.lng, latitude, longitude);
+          if (salto < 22) {
+            const a = 0.3; // factor de suavizado
+            lat = ref.lat + a * (latitude - ref.lat);
+            lng = ref.lng + a * (longitude - ref.lng);
+          }
+        }
+        suavizadaRef.current = { lat, lng };
+        setPosicion({ lat, lng, heading, speed, precision: accuracy ?? null });
 
         // Velocidad: usa coords.speed si existe; si no, calcula por distancia
+        // (con las coordenadas crudas, para no sesgar el cálculo).
         let velocidad = speed ?? null;
         const ant = anteriorRef.current;
         if (velocidad === null && ant) {
@@ -74,7 +99,7 @@ export function useGeolocalizacion() {
         if (err.code === err.PERMISSION_DENIED) setPermiso("denegado");
         else setPermiso((p) => (p === "ok" ? "ok" : "denegado"));
       },
-      { enableHighAccuracy: true, maximumAge: 2000, timeout: 15000 }
+      { enableHighAccuracy: true, maximumAge: 1000, timeout: 20000 }
     );
     watchIdRef.current = id;
 

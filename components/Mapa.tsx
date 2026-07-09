@@ -15,8 +15,9 @@ const RADIO_RADAR_VISIBLE = 130;
 const SIN_ZONA: Set<string> = new Set();
 
 // Píxeles que se baja el centro de la cámara en vista inmersiva, para que el
-// avatar quede más abajo y se vea más terreno por delante.
-const DESPLAZAMIENTO_AVATAR = 190;
+// avatar quede más abajo (hacia el botón "Reportar") y se vea más terreno
+// por delante.
+const DESPLAZAMIENTO_AVATAR = 260;
 
 interface Props {
   modo: ModoMapa;
@@ -474,9 +475,14 @@ export function Mapa({
     }
 
     if (modoRef.current === "inmersiva") {
-      // La cámara sigue al usuario; si camina, gira hacia su rumbo
+      // La cámara sigue al usuario manteniendo SIEMPRE el pitch/zoom inmersivo.
+      // Incluirlos evita que una actualización del GPS interrumpa la transición
+      // a la vista avatar y la deje congelada en una vista cenital.
+      const { pitch, zoom } = camaraDesdeAcercamiento(acercamientoRef.current);
       mapa.easeTo({
         center: [posicion.lng, posicion.lat],
+        pitch,
+        zoom,
         ...(enMovimiento && posicion.heading !== null
           ? { bearing: posicion.heading }
           : {}),
