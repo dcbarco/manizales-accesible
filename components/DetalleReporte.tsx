@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import { comprimirImagen } from "@/lib/imagen";
 import { useAuth } from "./AuthProvider";
 import type { Comentario, Reporte } from "@/lib/tipos";
 import {
@@ -30,31 +31,79 @@ export function DetalleReporte({ reporte, onCerrar, onActualizar, onEliminar }: 
   const [fotoAmpliada, setFotoAmpliada] = useState(false);
   const [editando, setEditando] = useState(false);
   const [textoEdicion, setTextoEdicion] = useState(reporte.descripcion);
+  const [nuevaFoto, setNuevaFoto] = useState<File | null>(null);
+  const [previaFoto, setPreviaFoto] = useState<string | null>(null);
+  const inputFotoRef = useRef<HTMLInputElement>(null);
 
   const esBarrera = reporte.tipo === "barrera";
   const color = colorReporte(reporte.tipo, reporte.estado);
   // ¿El reporte es del usuario que lo está viendo? (puede editarlo/borrarlo)
   const esAutor = !!sesion && sesion.user.id === reporte.usuario_id;
 
-  // Guardar la edición de la descripción del propio reporte
+  // Selección de una nueva foto (cámara o galería)
+  function alElegirFoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    if (previaFoto) URL.revokeObjectURL(previaFoto);
+    setNuevaFoto(f);
+    setPreviaFoto(URL.createObjectURL(f));
+    e.target.value = ""; // permite volver a elegir la misma
+  }
+
+  function cancelarEdicion() {
+    setTextoEdicion(reporte.descripcion);
+    if (previaFoto) URL.revokeObjectURL(previaFoto);
+    setNuevaFoto(null);
+    setPreviaFoto(null);
+    setEditando(false);
+  }
+
+  // Guardar la edición: descripción y/o nueva foto del propio reporte
   async function guardarEdicion() {
     const nueva = textoEdicion.trim();
-    if (!nueva || nueva === reporte.descripcion) {
-      setEditando(false);
+    const cambios: { descripcion?: string; foto_url?: string } = {};
+    if (nueva && nueva !== reporte.descripcion) cambios.descripcion = nueva;
+
+    if (!nueva) {
+      setMensaje("La descripción no puede quedar vacía.");
       return;
     }
     setOcupado(true);
-    const { error } = await supabase
-      .from("reportes")
-      .update({ descripcion: nueva })
-      .eq("id", reporte.id);
-    setOcupado(false);
-    if (error) {
+    try {
+      // Si hay foto nueva: comprimir y subir al bucket fotos-reportes
+      if (nuevaFoto && sesion) {
+        const blob = await comprimirImagen(nuevaFoto);
+        const ruta = `${sesion.user.id}/${Date.now()}.jpg`;
+        const { error: errSubida } = await supabase.storage
+          .from("fotos-reportes")
+          .upload(ruta, blob, { contentType: "image/jpeg" });
+        if (errSubida) throw errSubida;
+        cambios.foto_url = supabase.storage
+          .from("fotos-reportes")
+          .getPublicUrl(ruta).data.publicUrl;
+      }
+
+      if (Object.keys(cambios).length === 0) {
+        cancelarEdicion();
+        return;
+      }
+
+      const { error } = await supabase
+        .from("reportes")
+        .update(cambios)
+        .eq("id", reporte.id);
+      if (error) throw error;
+
+      onActualizar({ ...reporte, ...cambios });
+      if (previaFoto) URL.revokeObjectURL(previaFoto);
+      setNuevaFoto(null);
+      setPreviaFoto(null);
+      setEditando(false);
+    } catch {
       setMensaje("No pudimos guardar los cambios. Intenta de nuevo.");
-      return;
+    } finally {
+      setOcupado(false);
     }
-    onActualizar({ ...reporte, descripcion: nueva });
-    setEditando(false);
   }
 
   // Borrar el propio reporte
@@ -194,7 +243,7 @@ export function DetalleReporte({ reporte, onCerrar, onActualizar, onEliminar }: 
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={reporte.foto_url}
+            src={previaFoto ?? reporte.foto_url}
             alt={`Foto del reporte: ${reporte.descripcion.slice(0, 80)}`}
             className="h-52 w-full rounded-t-3xl object-cover"
           />
@@ -227,6 +276,30 @@ export function DetalleReporte({ reporte, onCerrar, onActualizar, onEliminar }: 
 
           {editando ? (
             <div className="flex flex-col gap-2">
+              {/* Input de cámara/galería (oculto) para cambiar la foto */}
+              <input
+                ref={inputFotoRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={alElegirFoto}
+                aria-hidden="true"
+                tabIndex={-1}
+              />
+              <button
+                onClick={() => inputFotoRef.current?.click()}
+                disabled={ocupado}
+                className="min-h-12 rounded-xl border-2 border-gray-400 bg-white text-lg font-bold active:scale-95 disabled:opacity-50"
+              >
+                📷 {nuevaFoto ? "Tomar otra foto" : "Cambiar foto"}
+              </button>
+              {nuevaFoto && (
+                <p className="text-base font-semibold text-bienestar-oscuro">
+                  ✓ Nueva foto lista. Guarda para aplicar los cambios.
+                </p>
+              )}
+
               <label htmlFor="editar-desc" className="sr-only">
                 Editar descripción
               </label>
@@ -243,14 +316,12 @@ export function DetalleReporte({ reporte, onCerrar, onActualizar, onEliminar }: 
                   disabled={ocupado}
                   className="min-h-12 flex-1 rounded-xl bg-cta text-lg font-bold text-white active:scale-95 disabled:opacity-50"
                 >
-                  Guardar
+                  {ocupado ? "Guardando…" : "Guardar"}
                 </button>
                 <button
-                  onClick={() => {
-                    setTextoEdicion(reporte.descripcion);
-                    setEditando(false);
-                  }}
-                  className="min-h-12 flex-1 rounded-xl border-2 border-gray-300 text-lg font-bold"
+                  onClick={cancelarEdicion}
+                  disabled={ocupado}
+                  className="min-h-12 flex-1 rounded-xl border-2 border-gray-300 text-lg font-bold disabled:opacity-50"
                 >
                   Cancelar
                 </button>
