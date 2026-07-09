@@ -19,7 +19,10 @@ create table if not exists public.perfiles (
   nivel int not null default 1,
   reportes_total int not null default 0,
   votos_total int not null default 0,
-  comentarios_total int not null default 0
+  comentarios_total int not null default 0,
+  -- Capa de administración (ver sección 7 y supabase/migracion_admin.sql)
+  es_admin boolean not null default false,
+  baneado boolean not null default false
 );
 
 -- Reportes ciudadanos: barreras y espacios de bienestar
@@ -364,3 +367,61 @@ create policy "avatar actualizar propio" on storage.objects
 alter publication supabase_realtime add table public.reportes;
 alter publication supabase_realtime add table public.comentarios;
 alter publication supabase_realtime add table public.insignias_usuario;
+alter publication supabase_realtime add table public.perfiles;
+
+-- ==============================================================
+-- 7. CAPA DE ADMINISTRACIÓN (rol admin + baneo + moderación)
+-- Ver detalle y asignación de admins en supabase/migracion_admin.sql
+-- ==============================================================
+
+create or replace function public.es_admin(uid uuid)
+returns boolean language sql security definer stable
+set search_path = public as $$
+  select coalesce((select es_admin from perfiles where id = uid), false);
+$$;
+
+create or replace function public.esta_baneado(uid uuid)
+returns boolean language sql security definer stable
+set search_path = public as $$
+  select coalesce((select baneado from perfiles where id = uid), false);
+$$;
+
+-- Un usuario normal no puede cambiarse a sí mismo baneado/es_admin
+create or replace function public.proteger_flags_perfil()
+returns trigger language plpgsql security definer
+set search_path = public as $$
+begin
+  if (new.baneado is distinct from old.baneado
+      or new.es_admin is distinct from old.es_admin)
+     and not public.es_admin(auth.uid()) then
+    new.baneado := old.baneado;
+    new.es_admin := old.es_admin;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists t_proteger_flags on public.perfiles;
+create trigger t_proteger_flags
+  before update on public.perfiles
+  for each row execute function public.proteger_flags_perfil();
+
+-- Un usuario baneado no puede reportar, votar ni comentar (restrictivas)
+create policy "reportes no baneado" on public.reportes as restrictive
+  for insert to authenticated with check (not public.esta_baneado(auth.uid()));
+create policy "votos no baneado" on public.votos_reporte as restrictive
+  for insert to authenticated with check (not public.esta_baneado(auth.uid()));
+create policy "comentarios no baneado" on public.comentarios as restrictive
+  for insert to authenticated with check (not public.esta_baneado(auth.uid()));
+
+-- Moderación de admins
+create policy "reportes admin actualizar" on public.reportes
+  for update to authenticated
+  using (public.es_admin(auth.uid())) with check (public.es_admin(auth.uid()));
+create policy "reportes admin eliminar" on public.reportes
+  for delete to authenticated using (public.es_admin(auth.uid()));
+create policy "perfiles admin actualizar" on public.perfiles
+  for update to authenticated
+  using (public.es_admin(auth.uid())) with check (public.es_admin(auth.uid()));
+create policy "perfiles admin eliminar" on public.perfiles
+  for delete to authenticated using (public.es_admin(auth.uid()));

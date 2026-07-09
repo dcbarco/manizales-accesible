@@ -73,6 +73,16 @@ export default function PaginaPerfil() {
         </Link>
       </div>
 
+      {/* Acceso al panel de administración (solo admins) */}
+      {perfil.es_admin && (
+        <Link
+          href="/admin"
+          className="flex min-h-14 items-center justify-center rounded-2xl bg-tinta text-lg font-bold text-white shadow active:scale-95 transition"
+        >
+          🛠️ Panel de administración
+        </Link>
+      )}
+
       {/* Cabecera del perfil */}
       <section className="rounded-3xl bg-white p-5 shadow" aria-label="Tu nivel y puntos">
         <div className="flex items-center gap-4">

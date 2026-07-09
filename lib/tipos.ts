@@ -20,6 +20,8 @@ export interface Perfil {
   reportes_total: number;
   votos_total: number;
   comentarios_total: number;
+  es_admin?: boolean;
+  baneado?: boolean;
 }
 
 export interface Reporte {
