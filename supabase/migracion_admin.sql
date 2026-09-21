@@ -96,5 +96,5 @@ alter publication supabase_realtime add table public.perfiles;
 update public.perfiles set es_admin = true
 where id in (
   select id from auth.users
-  where email in ('castillodann@gmail.com')  -- agrega aquí más correos
+  where email in ('castillodann@gmail.com', 'centrodeciencia.labs@ucaldas.edu.co')  -- agrega aquí más correos
 );
