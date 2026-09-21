@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
-import { comprimirImagen } from "@/lib/imagen";
+import { comprimirImagen, urlFotoMedia } from "@/lib/imagen";
 import { useAuth } from "./AuthProvider";
 import type { Comentario, Reporte } from "@/lib/tipos";
 import {
@@ -243,7 +243,7 @@ export function DetalleReporte({ reporte, onCerrar, onActualizar, onEliminar }: 
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={previaFoto ?? reporte.foto_url}
+            src={previaFoto ?? urlFotoMedia(reporte.foto_url)}
             alt={`Foto del reporte: ${reporte.descripcion.slice(0, 80)}`}
             className="h-52 w-full rounded-t-3xl object-cover"
           />

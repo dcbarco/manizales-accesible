@@ -3,6 +3,7 @@
 import type { Reporte } from "@/lib/tipos";
 import type { ReporteCercano } from "@/lib/useProximidad";
 import { colorReporte, etiquetaEstado } from "@/lib/gamificacion";
+import { urlMiniatura } from "@/lib/imagen";
 
 interface Props {
   puntos: ReporteCercano[];
@@ -73,8 +74,9 @@ export function PanelNotificaciones({
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={r.foto_url}
+                    src={urlMiniatura(r.foto_url)}
                     alt=""
+                    loading="lazy"
                     className="h-14 w-14 shrink-0 rounded-xl object-cover"
                     style={{ border: `3px solid ${color}` }}
                   />

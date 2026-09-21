@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/components/AuthProvider";
 import { PantallaCarga } from "@/components/PantallaCarga";
 import { infoNivel } from "@/lib/gamificacion";
+import { urlMiniatura } from "@/lib/imagen";
 import type { Insignia, Reporte } from "@/lib/tipos";
 
 // Perfil del usuario: nivel, puntos, insignias, contadores e historial
@@ -205,8 +206,9 @@ export default function PaginaPerfil() {
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={r.foto_url}
+                  src={urlMiniatura(r.foto_url)}
                   alt=""
+                  loading="lazy"
                   className="h-14 w-14 rounded-xl object-cover"
                 />
                 <span className="flex-1">

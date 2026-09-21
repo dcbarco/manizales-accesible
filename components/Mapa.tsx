@@ -5,6 +5,7 @@ import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { Posicion, Reporte } from "@/lib/tipos";
 import { colorReporte } from "@/lib/gamificacion";
+import { urlMiniatura } from "@/lib/imagen";
 import { CENTRO_MANIZALES, distanciaMetros } from "@/lib/useGeolocalizacion";
 
 export type ModoMapa = "inmersiva" | "general";
@@ -524,6 +525,8 @@ export function Mapa({
 }
 
 // ---------- Globo flotante con miniatura de la foto ----------
+// La estructura DOM se crea UNA sola vez; las actualizaciones (estado, votos,
+// realtime) solo tocan color/etiqueta y no vuelven a pedir la imagen.
 function crearGlobo(
   id: string,
   datosRef: React.RefObject<Map<string, Reporte>>,
@@ -532,6 +535,12 @@ function crearGlobo(
   const el = document.createElement("button");
   el.type = "button";
   el.className = "globo-reporte";
+  el.innerHTML = `
+    <span class="globo-marco" style="display:block;width:54px;height:54px;border-radius:14px;border:4px solid #999;overflow:hidden;background:#e9ecef;box-shadow:0 3px 8px rgba(0,0,0,0.3)">
+      <img alt="" style="width:100%;height:100%;object-fit:cover" loading="lazy" decoding="async" fetchpriority="low"/>
+    </span>
+    <span class="globo-punta" style="display:block;margin:-1px auto 0;width:0;height:0;border-left:9px solid transparent;border-right:9px solid transparent;border-top:12px solid #999"></span>
+  `;
   el.addEventListener("click", (e) => {
     e.stopPropagation();
     const r = datosRef.current?.get(id);
@@ -545,10 +554,19 @@ function pintarGlobo(el: HTMLElement, r: Reporte) {
   const etiqueta =
     r.tipo === "barrera" ? "Reporte de barrera" : "Espacio de bienestar";
   el.setAttribute("aria-label", `${etiqueta}: ${r.descripcion.slice(0, 60)}`);
-  el.innerHTML = `
-    <span style="display:block;width:54px;height:54px;border-radius:14px;border:4px solid ${color};overflow:hidden;background:#fff;box-shadow:0 3px 8px rgba(0,0,0,0.3)">
-      <img src="${r.foto_url}" alt="" style="width:100%;height:100%;object-fit:cover" loading="lazy"/>
-    </span>
-    <span style="display:block;margin:-1px auto 0;width:0;height:0;border-left:9px solid transparent;border-right:9px solid transparent;border-top:12px solid ${color}"></span>
-  `;
+  const marco = el.querySelector<HTMLElement>(".globo-marco");
+  const punta = el.querySelector<HTMLElement>(".globo-punta");
+  if (marco) marco.style.borderColor = color;
+  if (punta) punta.style.borderTopColor = color;
+
+  const img = el.querySelector<HTMLImageElement>("img");
+  if (img && img.dataset.foto !== r.foto_url) {
+    img.dataset.foto = r.foto_url;
+    // Si el endpoint de transformaciones falla, cae a la foto original
+    img.onerror = () => {
+      img.onerror = null;
+      img.src = r.foto_url;
+    };
+    img.src = urlMiniatura(r.foto_url);
+  }
 }
